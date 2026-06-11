@@ -5,16 +5,20 @@
 
 Built for **OSC AI Build 1.0** · Theme: AI for Social Impact (education) · Future of Productivity
 
-**Live demo:** _add your deployed URL here_ · **Demo video:** _add link (optional)_
+**Live demo:** [step-wise-taupe.vercel.app](https://step-wise-taupe.vercel.app/) ·
+**Source code:** [github.com/RajdeepKushwaha5/StepWise](https://github.com/RajdeepKushwaha5/StepWise) ·
+**Demo video:** _add link after recording_
 
 ---
 
 ## Project status
 
-The core product works locally and has been verified end to end.
+The core product works locally and has been verified end to end. The frontend is deployed on
+Vercel; configure its `NEXT_PUBLIC_API_URL` with the deployed backend URL before public judging.
 
 Verified on June 11, 2026:
 - Frontend serves successfully at `http://localhost:3000`.
+- Deployed frontend routes serve successfully at `https://step-wise-taupe.vercel.app/`.
 - Backend health is `ok` at `http://localhost:8000/api/health`.
 - All 39 backend unit tests pass.
 - The live Wolfram tool suite and full Gemini → Wolfram tutoring pipeline pass.
