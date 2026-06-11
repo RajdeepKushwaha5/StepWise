@@ -25,6 +25,8 @@ Verified on June 11, 2026:
 - All 12 practice topic/difficulty combinations generate successfully.
 - Guided hints, wrong/correct answer checks, mistake analysis, history export, and study-report PDF
   generation pass through the live API.
+- Learning Insights tracks submitted attempts and derives misconception, mastery, hint-dependency,
+  difficulty, and next-topic signals locally.
 - Frontend lint, formatting tests, TypeScript checks, and production build pass.
 
 ---
@@ -44,6 +46,8 @@ StepWise separates **teaching** from **math**:
   showing an independent confirmation when both answers agree.
 - Practice Mode adds a repeatable learning loop with progressive hints, Wolfram-verified answers,
   targeted mistake analysis, and local progress tracking.
+- Learning Insights turns those attempts into a mastery map, recurring-misconception analysis,
+  hint-dependency metrics, and an adaptive next-topic recommendation.
 - Computed tutor and practice sessions are saved locally and can be combined into study-report PDFs.
 
 > Every other AI tutor asks you to trust it. StepWise shows the computation — and teaches you why.
@@ -67,6 +71,8 @@ built from Wolfram computations only.
 
 ## Try it
 - Open **Practice** to choose a topic and difficulty, request hints, and submit an answer.
+- Open **Insights** after several attempts to see recurring misconceptions, mastery by topic,
+  difficulty performance, hint dependency, and the recommended next practice topic.
 - Open **History** to search, reopen, delete, or export saved solutions and revision sets.
 - Open **Tool lab** to inspect all eight supported operations and launch an example directly into
   the live tutor.
@@ -108,9 +114,9 @@ backend/                FastAPI service (Python)
     wolfram/            cloud session + the 8 math-tool templates
   Dockerfile            container for Render/Railway/Fly
 frontend/               Next.js 16 app
-  app/                  pages (/, /practice, /history, /capabilities, /architecture) + globals.css
+  app/                  pages (/, /practice, /insights, /history, /capabilities, /architecture) + globals.css
   components/           shared navigation, AskConsole, Verdict, CheckAnswer, Tex, ReportView…
-  lib/                  API client, local history/progress storage, types, formatting
+  lib/                  API client, local history/progress/insight analytics, types, formatting
 ```
 
 ## Stack
@@ -173,6 +179,8 @@ deployed backend.
 ### Frontend pages
 - `/` — live tutor, AI-alone comparison, computed evidence, answer checking, and reports
 - `/practice` — topic/difficulty practice, progressive hints, mistake analysis, and progress metrics
+- `/insights` — browser-local misconception trends, accuracy breakdowns, mastery map, and adaptive
+  next-topic recommendation
 - `/history` — local solved-session library with search, reopen, delete, and PDF export
 - `/capabilities` — Tool Lab with all eight approved operations, runnable examples, and the honest
   verification matrix
@@ -222,7 +230,8 @@ cd frontend; npm run lint; npm run test:format; npm run build
 - The number guard checks numeric claims, not the logical correctness of every explanatory sentence.
 - Rate limiting and report caching are in memory, so they reset on restart and are not shared across
   multiple backend workers.
-- Practice progress and session history are browser-local and do not sync across devices.
+- Practice progress, learning insights, and session history are browser-local and do not sync
+  across devices.
 - Practice generation selects from a curated problem bank rather than inventing arbitrary exercises;
   this keeps the hints and expected answers predictable for the MVP.
 - The backend serializes Wolfram Cloud evaluations through one reused session; this is reliable for

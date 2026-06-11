@@ -1,5 +1,11 @@
 import { fmtByKey, fmtNum, prettyKey } from "./lib/format.ts";
 import { readPracticeStats, updatePracticeStats } from "./lib/history.ts";
+import {
+  buildLearningInsights,
+  normalizePracticeTopic,
+  readPracticeAttempts,
+  recordPracticeAttempt,
+} from "./lib/insights.ts";
 
 function assertEqual(actual, expected, label) {
   if (actual !== expected) {
@@ -30,4 +36,66 @@ globalThis.localStorage.setItem = () => {
 };
 assertEqual(updatePracticeStats({ attempted: 1 }).attempted, 1, "storage failure does not break progress");
 
-console.log("[SUCCESS] format tests passed");
+const attempts = [
+  {
+    id: "1",
+    createdAt: "2026-06-11T10:00:00.000Z",
+    problemId: "calc-1",
+    question: "Differentiate x^2 Sin[x]",
+    topic: "calculus",
+    difficulty: "medium",
+    correct: false,
+    mistakeKind: "missing_term",
+    hintsUsed: 1,
+  },
+  {
+    id: "2",
+    createdAt: "2026-06-11T10:01:00.000Z",
+    problemId: "calc-1",
+    question: "Differentiate x^2 Sin[x]",
+    topic: "calculus",
+    difficulty: "medium",
+    correct: true,
+    mistakeKind: "correct",
+    hintsUsed: 1,
+  },
+  {
+    id: "3",
+    createdAt: "2026-06-11T10:02:00.000Z",
+    problemId: "alg-1",
+    question: "Solve x + 4 = 2",
+    topic: "algebra",
+    difficulty: "easy",
+    correct: false,
+    mistakeKind: "sign",
+    hintsUsed: 0,
+  },
+];
+const insights = buildLearningInsights(attempts);
+assertEqual(insights.totalAttempts, 3, "insights count submitted attempts");
+assertEqual(insights.accuracy, 33, "insights calculate overall accuracy");
+assertEqual(insights.hintDependency, 67, "insights calculate hint dependency");
+assertEqual(insights.mostFrequentMistake?.kind, "missing_term", "mistake tie is deterministic");
+assertEqual(insights.byTopic[0].mastery, 40, "mastery combines accuracy and independence");
+assertEqual(insights.recommendedTopic?.key, "algebra", "weakest assessed topic is recommended");
+assertEqual(normalizePracticeTopic("algebra"), "algebra", "recommended topic deep-link is retained");
+assertEqual(normalizePracticeTopic("obsolete-topic"), "calculus", "invalid deep-link topic falls back safely");
+assertEqual(
+  buildLearningInsights([...attempts, { ...attempts[0], id: "bad", topic: "obsolete-topic" }]).totalAttempts,
+  3,
+  "unsupported persisted topics are ignored",
+);
+
+globalThis.localStorage.setItem = (key, value) => stored.set(key, value);
+recordPracticeAttempt({
+  problemId: "arith-1",
+  question: "Evaluate 7 * 8",
+  topic: "arithmetic",
+  difficulty: "easy",
+  correct: true,
+  mistakeKind: "correct",
+  hintsUsed: 0,
+});
+assertEqual(readPracticeAttempts().length, 1, "practice attempt is persisted for insights");
+
+console.log("[SUCCESS] format and learning insight tests passed");

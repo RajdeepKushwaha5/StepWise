@@ -5,6 +5,7 @@ import { BadgeCheck, BookOpenCheck, Eye, Lightbulb, Loader2, RefreshCw, Target, 
 import { SiteHeader } from "@/components/SiteHeader";
 import { checkPractice, generatePractice, practiceHint, revealPractice } from "@/lib/api";
 import { readPracticeStats, savePracticeHistory, updatePracticeStats, type PracticeStats } from "@/lib/history";
+import { normalizePracticeTopic, recordPracticeAttempt } from "@/lib/insights";
 import type { PracticeCheckResponse, PracticeProblem, PracticeRevealResponse } from "@/lib/types";
 
 const TOPICS = [
@@ -30,8 +31,10 @@ export default function PracticePage() {
   useEffect(() => {
     const timer = window.setTimeout(async () => {
       setStats(readPracticeStats());
+      const initialTopic = normalizePracticeTopic(new URLSearchParams(window.location.search).get("topic"));
+      setTopic(initialTopic);
       try {
-        setProblem(await generatePractice("calculus", "easy"));
+        setProblem(await generatePractice(initialTopic, "easy"));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not generate a problem.");
       }
@@ -78,6 +81,15 @@ export default function PracticePage() {
       const result = await checkPractice(problem.id, answer.trim());
       setCheck(result);
       setStats(updatePracticeStats({ attempted: 1, correct: result.equivalent ? 1 : 0 }));
+      recordPracticeAttempt({
+        problemId: problem.id,
+        question: problem.question,
+        topic: problem.topic,
+        difficulty: problem.difficulty,
+        correct: result.equivalent,
+        mistakeKind: result.analysis.kind,
+        hintsUsed: hints.length,
+      });
       if (result.equivalent) {
         savePracticeHistory(problem.question, result, "Practice answer verified by Wolfram.");
       }

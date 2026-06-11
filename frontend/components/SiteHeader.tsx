@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { BookOpenCheck, FileCheck2, FlaskConical, History, Network, Sigma } from "lucide-react";
+import { BookOpenCheck, BrainCircuit, FileCheck2, FlaskConical, History, Network, Sigma } from "lucide-react";
 import { GeminiMark, WolframMark } from "@/components/BrandMarks";
 import { Wordmark } from "@/components/Wordmark";
 
-type ActivePage = "tutor" | "practice" | "history" | "capabilities" | "architecture";
+type ActivePage = "tutor" | "practice" | "insights" | "history" | "capabilities" | "architecture";
 
 export function SiteHeader({
   active,
@@ -22,6 +22,7 @@ export function SiteHeader({
         <nav className="flex flex-wrap items-center gap-2" aria-label="Main navigation">
           <NavItem href="/" active={active === "tutor"}><Sigma size={13} /> Tutor</NavItem>
           <NavItem href="/practice" active={active === "practice"}><BookOpenCheck size={13} /> Practice</NavItem>
+          <NavItem href="/insights" active={active === "insights"}><BrainCircuit size={13} /> Insights</NavItem>
           <NavItem href="/history" active={active === "history"}><History size={13} /> History</NavItem>
           <NavItem href="/capabilities" active={active === "capabilities"}><FlaskConical size={13} /> Tool lab</NavItem>
           <NavItem href="/architecture" active={active === "architecture"}><Network size={13} /> Architecture</NavItem>
