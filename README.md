@@ -1,4 +1,4 @@
-# StepWise — the AI tutor that shows its computation
+# StepWise - the AI tutor that shows its computation
 
 > StepWise uses **Wolfram Language** to compute the displayed result, **Gemini** to explain it,
 > and a numeric-claim guard to keep unsupported numbers out of the explanation.
