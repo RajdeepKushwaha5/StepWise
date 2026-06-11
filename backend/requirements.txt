@@ -1,0 +1,6 @@
+wolframclient>=1.1.7
+python-dotenv>=1.0.0
+google-genai>=1.0.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+reportlab>=4.2.0

@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+data/
+out/
+test_*.py
+README.md
+run.ps1

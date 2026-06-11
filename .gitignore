@@ -1,0 +1,50 @@
+# --- secrets (never commit) ---
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+# --- python ---
+**/.venv/
+**/__pycache__/
+*.py[cod]
+backend/data/
+backend/out/
+
+# --- node / next ---
+**/node_modules/
+**/.next/
+**/out/
+**/build/
+**/test-results/
+*.tsbuildinfo
+*.log
+submission-audit/
+presentation/scratch/
+.claude/
+
+# --- internal planning / submission working files ---
+about-hackathon.txt
+orientation.txt
+demo-script.md
+demo-video-script.md
+DEPLOY.md
+StepWise-ARCHITECTURE.md
+SUBMISSION-CHECKLIST.md
+WOLFRAM-DIAGNOSIS.md
+frontend/AGENTS.md
+frontend/CLAUDE.md
+frontend/public/file.svg
+frontend/public/globe.svg
+frontend/public/next.svg
+frontend/public/vercel.svg
+frontend/public/window.svg
+
+# --- large local installers / binaries (do NOT commit) ---
+WolframEngine_*.exe
+*.exe
+
+# --- os / editor ---
+.DS_Store
+.vercel
