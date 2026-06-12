@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { AlertTriangle, BadgeCheck, Bot, ChevronDown, Code2, LineChart, ShieldCheck } from "lucide-react";
 import type { AskResponse, VerifiedValue } from "@/lib/types";
 import { fmtByKey, prettyKey } from "@/lib/format";
+import { MathText } from "@/components/MathText";
 import { Tex } from "@/components/Tex";
 import { CheckAnswer } from "@/components/CheckAnswer";
 
@@ -87,7 +88,7 @@ export function Verdict({ r }: { r: AskResponse }) {
                   <div className="tnum mt-1 break-words font-mono text-2xl font-bold line-through text-[var(--color-lie)]">{rawHeadline}</div>
                 </div>
               )}
-              <p className="text-sm leading-7 text-muted">{r.raw_answer}</p>
+              <MathText text={r.raw_answer} className="text-sm leading-7 text-muted" />
             </div>
           </motion.section>
           <aside className="raw-brief p-4">
@@ -115,7 +116,7 @@ export function Verdict({ r }: { r: AskResponse }) {
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
               <div>
                 <div className="eyebrow">Guided explanation</div>
-                <p className="mt-2 max-w-3xl text-sm leading-7 text-text">{r.verified_answer}</p>
+                <MathText text={r.verified_answer} className="mt-2 max-w-3xl text-sm leading-7 text-text" />
               </div>
               {r.verified_clean && (
                 <span className="status-chip status-chip-accent">

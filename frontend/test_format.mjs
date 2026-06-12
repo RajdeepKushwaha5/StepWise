@@ -1,5 +1,6 @@
 import { fmtByKey, fmtNum, prettyKey } from "./lib/format.ts";
 import { readPracticeStats, updatePracticeStats } from "./lib/history.ts";
+import { parseMathText } from "./lib/math-text.ts";
 import {
   buildLearningInsights,
   normalizePracticeTopic,
@@ -20,6 +21,12 @@ assertEqual(fmtByKey("rank", 2), "2", "matrix rank");
 assertEqual(fmtByKey("definite_integral", 9), "9", "definite integral value");
 assertEqual(fmtByKey("x_max", 10.5), "10.5", "plain real");
 assertEqual(prettyKey("antiderivative_tex"), "antiderivative (LaTeX)", "pretty key tex");
+const mixedMath = parseMathText(String.raw`Use $x^2 \sin(x)$, then \(2x\).`);
+assertEqual(mixedMath.length, 5, "mixed explanation is split into prose and math");
+assertEqual(mixedMath[1].kind, "inline-math", "dollar-delimited math is detected");
+assertEqual(mixedMath[1].value, String.raw`x^2 \sin(x)`, "math delimiters are removed");
+assertEqual(mixedMath[3].value, "2x", "parenthesis-delimited math is detected");
+assertEqual(parseMathText(String.raw`Result: \[x^2 + 1\]`)[1].kind, "block-math", "display math is detected");
 
 const stored = new Map();
 globalThis.window = {};
