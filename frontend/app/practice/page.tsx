@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BadgeCheck, BookOpenCheck, Eye, Lightbulb, Loader2, RefreshCw, Target, XCircle } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { checkPractice, generatePractice, practiceHint, revealPractice } from "@/lib/api";
@@ -25,42 +25,63 @@ export default function PracticePage() {
   const [check, setCheck] = useState<PracticeCheckResponse | null>(null);
   const [revealed, setRevealed] = useState<PracticeRevealResponse | null>(null);
   const [stats, setStats] = useState<PracticeStats>({ attempted: 0, correct: 0, hintsUsed: 0 });
-  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [loadingHint, setLoadingHint] = useState(false);
+  const [revealing, setRevealing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const generationRequest = useRef(0);
+
+  const loadProblem = useCallback(async (nextTopic: string, nextDifficulty: string, excludeId = "") => {
+    const request = ++generationRequest.current;
+    setGenerating(true);
+    setError(null);
+    setProblem(null);
+    setAnswer("");
+    setHints([]);
+    setCheck(null);
+    setRevealed(null);
+    try {
+      const nextProblem = await generatePractice(nextTopic, nextDifficulty, excludeId);
+      if (request === generationRequest.current) setProblem(nextProblem);
+    } catch (e) {
+      if (request === generationRequest.current) {
+        setError(e instanceof Error ? e.message : "Could not generate a problem.");
+      }
+    } finally {
+      if (request === generationRequest.current) setGenerating(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(async () => {
+    const timer = window.setTimeout(() => {
       setStats(readPracticeStats());
       const initialTopic = normalizePracticeTopic(new URLSearchParams(window.location.search).get("topic"));
       setTopic(initialTopic);
-      try {
-        setProblem(await generatePractice(initialTopic, "easy"));
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not generate a problem.");
-      }
+      void loadProblem(initialTopic, "easy");
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [loadProblem]);
 
   async function newProblem() {
-    setLoading(true);
-    setError(null);
-    try {
-      setProblem(await generatePractice(topic, difficulty, problem?.id));
-      setAnswer("");
-      setHints([]);
-      setCheck(null);
-      setRevealed(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not generate a problem.");
-    } finally {
-      setLoading(false);
-    }
+    await loadProblem(topic, difficulty, problem?.id);
+  }
+
+  function chooseTopic(nextTopic: string) {
+    if (nextTopic === topic) return;
+    setTopic(nextTopic);
+    void loadProblem(nextTopic, difficulty);
+  }
+
+  function chooseDifficulty(nextDifficulty: string) {
+    if (nextDifficulty === difficulty) return;
+    setDifficulty(nextDifficulty);
+    void loadProblem(topic, nextDifficulty);
   }
 
   async function getHint() {
-    if (!problem || hints.length >= problem.hint_count) return;
-    setLoading(true);
+    if (!problem || busy || hints.length >= problem.hint_count) return;
+    setLoadingHint(true);
     setError(null);
     try {
       const hint = await practiceHint(problem.id, hints.length + 1);
@@ -69,13 +90,13 @@ export default function PracticePage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load a hint.");
     } finally {
-      setLoading(false);
+      setLoadingHint(false);
     }
   }
 
   async function submit() {
-    if (!problem || !answer.trim() || loading) return;
-    setLoading(true);
+    if (!problem || !answer.trim() || busy) return;
+    setChecking(true);
     setError(null);
     try {
       const result = await checkPractice(problem.id, answer.trim());
@@ -96,13 +117,13 @@ export default function PracticePage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not check the answer.");
     } finally {
-      setLoading(false);
+      setChecking(false);
     }
   }
 
   async function reveal() {
-    if (!problem || loading) return;
-    setLoading(true);
+    if (!problem || busy) return;
+    setRevealing(true);
     setError(null);
     try {
       const result = await revealPractice(problem.id);
@@ -111,10 +132,11 @@ export default function PracticePage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not reveal the answer.");
     } finally {
-      setLoading(false);
+      setRevealing(false);
     }
   }
 
+  const busy = generating || checking || loadingHint || revealing;
   const accuracy = stats.attempted ? Math.round((stats.correct / stats.attempted) * 100) : 0;
 
   return (
@@ -148,7 +170,7 @@ export default function PracticePage() {
                 <legend className="eyebrow">Topic</legend>
                 <div className="mt-2 grid gap-2">
                   {TOPICS.map(([value, label]) => (
-                    <button key={value} onClick={() => setTopic(value)} className={`console-action justify-start ${topic === value ? "console-action-primary" : ""}`}>{label}</button>
+                    <button key={value} onClick={() => chooseTopic(value)} disabled={busy} className={`console-action justify-start ${topic === value ? "console-action-primary" : ""}`}>{label}</button>
                   ))}
                 </div>
               </fieldset>
@@ -156,12 +178,12 @@ export default function PracticePage() {
                 <legend className="eyebrow">Difficulty</legend>
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   {DIFFICULTIES.map((value) => (
-                    <button key={value} onClick={() => setDifficulty(value)} className={`console-action ${difficulty === value ? "console-action-primary" : ""}`}>{value}</button>
+                    <button key={value} onClick={() => chooseDifficulty(value)} disabled={busy} className={`console-action ${difficulty === value ? "console-action-primary" : ""}`}>{value}</button>
                   ))}
                 </div>
               </fieldset>
-              <button onClick={() => void newProblem()} disabled={loading} className="console-action console-action-primary w-full">
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Generate problem
+              <button onClick={() => void newProblem()} disabled={busy} className="console-action console-action-primary w-full">
+                {generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Generate problem
               </button>
               <div className="border-t border-line pt-4 text-[10px] leading-5 text-muted">
                 Hints used across sessions: <strong className="text-text">{stats.hintsUsed}</strong>
@@ -174,10 +196,10 @@ export default function PracticePage() {
               <div>
                 <div className="eyebrow">Current challenge</div>
                 <div className="mt-1 text-sm font-bold capitalize text-text">
-                  {problem ? `${problem.topic.replace("_", " ")} / ${problem.difficulty}` : "Preparing problem"}
+                  {problem ? `${problem.topic.replace("_", " ")} / ${problem.difficulty}` : `${topic.replace("_", " ")} / ${difficulty}`}
                 </div>
               </div>
-              <span className="status-chip status-chip-accent">Wolfram checked</span>
+              <span className="status-chip status-chip-accent">{generating ? "Generating" : "Wolfram checked"}</span>
             </div>
             <div className="p-4 sm:p-6">
               {problem ? (
@@ -193,15 +215,17 @@ export default function PracticePage() {
                       placeholder="Enter your answer in Wolfram-style math syntax"
                       className="min-w-0 flex-1 border border-line-2 bg-[#fffefa] px-3 py-3 font-mono text-sm text-text outline-none focus:border-[var(--color-verify)]"
                     />
-                    <button onClick={() => void submit()} disabled={loading || !answer.trim()} className="console-action console-action-primary px-5">
-                      {loading ? <Loader2 size={14} className="animate-spin" /> : <BookOpenCheck size={14} />} Verify answer
+                    <button onClick={() => void submit()} disabled={busy || !answer.trim()} className="console-action console-action-primary px-5">
+                      {checking ? <Loader2 size={14} className="animate-spin" /> : <BookOpenCheck size={14} />} Verify answer
                     </button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button onClick={() => void getHint()} disabled={loading || hints.length >= problem.hint_count} className="console-action">
-                      <Lightbulb size={14} /> Hint {Math.min(hints.length + 1, problem.hint_count)} of {problem.hint_count}
+                    <button onClick={() => void getHint()} disabled={busy || hints.length >= problem.hint_count} className="console-action">
+                      {loadingHint ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />} Hint {Math.min(hints.length + 1, problem.hint_count)} of {problem.hint_count}
                     </button>
-                    <button onClick={() => void reveal()} disabled={loading || Boolean(revealed)} className="console-action"><Eye size={14} /> Reveal verified answer</button>
+                    <button onClick={() => void reveal()} disabled={busy || Boolean(revealed)} className="console-action">
+                      {revealing ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} Reveal verified answer
+                    </button>
                   </div>
 
                   {hints.length > 0 && (
@@ -223,7 +247,7 @@ export default function PracticePage() {
                   )}
                 </>
               ) : (
-                <div className="grid min-h-80 place-items-center text-xs text-muted">{loading ? "Generating practice problem..." : "Choose a setup and generate a problem."}</div>
+                <div className="grid min-h-80 place-items-center text-xs text-muted">{generating ? "Generating practice problem..." : "Choose a setup and generate a problem."}</div>
               )}
               {error && <div className="mt-4 border-l-2 border-[var(--color-lie)] px-3 text-xs text-[var(--color-lie)]">{error}</div>}
             </div>
