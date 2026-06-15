@@ -163,6 +163,22 @@ class PlannerFallbackTests(unittest.TestCase):
     def test_rough_expression_converts_word_functions(self) -> None:
         self.assertEqual(_rough_expression("derivative of sin(x)"), "Sin[x]")
 
+    def test_conversational_filler_is_stripped(self) -> None:
+        from app.pipeline import _fallback_is_computable
+
+        # "differentiate this : f(x) = ..." should still route cleanly and compute
+        sel = _fallback_plan("differentiate this : f(x) = 6x^3 - 9x + 4")
+        self.assertEqual(sel["name"], "differentiate")
+        self.assertTrue(_fallback_is_computable(sel))
+        self.assertEqual(_rough_expression("differentiate the following function: f(x) = x^2"), "f(x) = x^2")
+
+    def test_word_salad_is_not_treated_as_computable(self) -> None:
+        from app.pipeline import _fallback_is_computable
+
+        # matches the "differentiate" trigger but has no real math -> defer, don't feed Wolfram
+        sel = _fallback_plan("differentiate the thing my teacher wrote on the board")
+        self.assertFalse(_fallback_is_computable(sel))
+
 
 class PipelineTests(unittest.TestCase):
     def test_pipeline_survives_gemini_outage(self) -> None:

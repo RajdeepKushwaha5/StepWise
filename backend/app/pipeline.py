@@ -18,7 +18,7 @@ from app.llm.narrator import narrate, templated_answer
 from app.llm.planner import plan
 from app.llm.raw import raw_answer
 from app.verify.guard import discrepancy, verify_text
-from app.wolfram.tools import TOOLS, ToolError, run_tool
+from app.wolfram.tools import TOOLS, ToolError, _safe_expr, _strip_definition, run_tool
 from app.learning import analyze_mistake
 
 # --------------------------------------------------------------------------- #
@@ -63,6 +63,13 @@ def _rough_expression(question: str) -> str:
         if idx != -1:
             q = q[idx + len(trigger):]
             break
+    # drop conversational lead-ins ("this :", "the following function", "please", ...)
+    q = re.sub(
+        r"^(?:[\s:,\-]*\b(?:please|this|that|it|the|following|function|expression|equation|problem)\b)+[\s:,\-]*",
+        "",
+        q,
+        flags=re.I,
+    )
     q = re.split(r"\bwith respect to\b|\bfor\b|\?", q, flags=re.I)[0]
     q = q.strip(" .:=")
     for word, fn in _WORD_FUNCS.items():
@@ -118,6 +125,37 @@ def _detect_variable(question: str, default: str = "x") -> str:
     """If the student wrote a function definition like g(t) = ..., differentiate w.r.t. t."""
     match = _DEF_VAR_RE.search(question)
     return match.group(1) if match else default
+
+
+# A computable expression must contain at least one real math token, not just words.
+_MATH_TOKEN = re.compile(
+    r"[0-9+\-*/^=\[\]{}]|\b(?:Sin|Cos|Tan|Cot|Sec|Csc|Exp|Log|Sqrt|Abs|Pi|E)\b"
+)
+
+
+def _fallback_is_computable(sel: dict[str, Any]) -> bool:
+    """Trust a deterministic match only if its extracted text is clean, real math.
+
+    The deterministic router is a fast path for well-formed questions. When it matches a
+    trigger word but the leftover text is conversational ('this : f(x) = ...') or just
+    words ('the thing my teacher wrote'), we return False so the pipeline lets Gemini
+    translate the phrasing — or fails gracefully — instead of feeding junk to Wolfram.
+    """
+    name = sel.get("name")
+    args = sel.get("args", {})
+    try:
+        if name == "solve_equation":
+            probe = _strip_definition(re.sub(r"[<>=]+", " ", str(args.get("equation", ""))))
+        elif name == "matrix_analysis":
+            probe = str(args.get("matrix", ""))
+        elif "expression" in args:
+            probe = _strip_definition(str(args["expression"]))
+        else:
+            return True
+        _safe_expr(probe)
+    except ToolError:
+        return False
+    return bool(_MATH_TOKEN.search(probe))
 
 
 def _looks_like_math_question(question: str) -> bool:
@@ -247,6 +285,8 @@ def tutor(question: str) -> dict[str, Any]:
     with ThreadPoolExecutor(max_workers=2) as pool:
         raw_future = pool.submit(raw_answer, question)
         sel = _fallback_plan(question)
+        if sel and not _fallback_is_computable(sel):
+            sel = None  # deterministic match left conversational junk — let Gemini translate
         if not sel:
             try:
                 sel = plan(question)
