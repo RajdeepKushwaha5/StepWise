@@ -20,7 +20,7 @@ def build_report(
     tool_args: dict[str, Any] | None = None,
     question: str = "",
 ) -> dict[str, Any]:
-    expr = tools._safe_expr(expression)
+    expr = tools._safe_expr(tools._strip_definition(expression))
     var = tools._safe_var(variable)
 
     args = dict(tool_args or {})

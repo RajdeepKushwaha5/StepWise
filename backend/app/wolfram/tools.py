@@ -81,6 +81,26 @@ def _safe_var(var: str) -> str:
     return cleaned
 
 
+_DEFINITION_RE = re.compile(r"^[A-Za-z]\w*\s*(?:\(\s*[A-Za-z]\w*\s*\))?\s*=(?!=)\s*(.+)$")
+
+
+def _strip_definition(expr: str) -> str:
+    """Reduce a function definition like 'f(x) = 6x^3 - 9x + 4' (or 'y = ...') to its
+    right-hand side.
+
+    Students routinely write the definition and then ask to differentiate, integrate, or
+    plot it; the lone '=' would otherwise trip the equation guard. Genuine equations with a
+    relational operator (handled by solve_equation) are left untouched.
+    """
+    cleaned = (expr or "").strip()
+    match = _DEFINITION_RE.match(cleaned)
+    if match:
+        rhs = match.group(1).strip()
+        if not any(ch in rhs for ch in "=<>"):
+            return rhs
+    return cleaned
+
+
 def _int(value: Any, default: int, *, low: int, high: int) -> int:
     try:
         n = int(value)
@@ -183,7 +203,7 @@ Module[{ex = __EXPR__, val},
 
 
 def evaluate_expression(expression: str) -> dict[str, Any]:
-    ex = _safe_expr(expression)
+    ex = _safe_expr(_strip_definition(expression))
     code = _EVAL.replace("__EXPR__", ex)
     return _normalize("evaluate_expression", f"Evaluate {ex}", code, code)
 
@@ -203,7 +223,7 @@ _SIMPLIFY_OPS = {"simplify": "FullSimplify", "factor": "Factor", "expand": "Expa
 
 
 def simplify_expression(expression: str, operation: str = "simplify") -> dict[str, Any]:
-    ex = _safe_expr(expression)
+    ex = _safe_expr(_strip_definition(expression))
     op = _SIMPLIFY_OPS.get((operation or "simplify").strip().lower(), "FullSimplify")
     code = _SIMPLIFY.replace("__EXPR__", ex).replace("__OP__", op)
     verb = {"FullSimplify": "Simplify", "Factor": "Factor", "Expand": "Expand",
@@ -224,7 +244,7 @@ Module[{f = __EXPR__, var = __VAR__, d},
 
 
 def differentiate(expression: str, variable: str = "x", order: int = 1) -> dict[str, Any]:
-    f = _safe_expr(expression)
+    f = _safe_expr(_strip_definition(expression))
     var = _safe_var(variable)
     n = _int(order, 1, low=1, high=6)
     chart = _plot(f"{{f, d}}", var, -5, 5, "Function (f) and its derivative", legends='{"f", "f\'"}')
@@ -263,7 +283,7 @@ Module[{f = __EXPR__, var = __VAR__, a = __A__, b = __B__, area},
 def integrate_expression(
     expression: str, variable: str = "x", lower: str = "", upper: str = ""
 ) -> dict[str, Any]:
-    f = _safe_expr(expression)
+    f = _safe_expr(_strip_definition(expression))
     var = _safe_var(variable)
     has_bounds = str(lower).strip() != "" and str(upper).strip() != ""
     if has_bounds:
@@ -300,7 +320,7 @@ Module[{f = __EXPR__, var = __VAR__},
 def plot_function(
     expression: str, variable: str = "x", x_min: float = -10, x_max: float = 10
 ) -> dict[str, Any]:
-    f = _safe_expr(expression)
+    f = _safe_expr(_strip_definition(expression))
     var = _safe_var(variable)
     try:
         lo = float(x_min)

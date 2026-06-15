@@ -75,6 +75,7 @@ def _fallback_plan(question: str) -> dict[str, Any] | None:
     for pattern, name in _INTENTS:
         if pattern.search(question):
             expr = _rough_expression(question)
+            var = _detect_variable(question)
             if not expr and name != "matrix_analysis":
                 return None
             if name == "solve_equation":
@@ -87,7 +88,7 @@ def _fallback_plan(question: str) -> dict[str, Any] | None:
                 m = re.search(r"\{\{.*\}\}", question)
                 return {"name": name, "args": {"matrix": m.group(0)}} if m else None
             if name == "plot_function":
-                return {"name": name, "args": {"expression": expr, "variable": "x"}}
+                return {"name": name, "args": {"expression": expr, "variable": var}}
             if name == "integrate_expression":
                 bounds = re.search(
                     r"\bfrom\s+(.+?)\s+to\s+(.+?)(?:\?|$)", question, re.I
@@ -98,16 +99,25 @@ def _fallback_plan(question: str) -> dict[str, Any] | None:
                         "name": name,
                         "args": {
                             "expression": expression,
-                            "variable": "x",
+                            "variable": var,
                             "lower": bounds.group(1).strip(),
                             "upper": bounds.group(2).strip(" .?"),
                         },
                     }
-                return {"name": name, "args": {"expression": expr, "variable": "x"}}
+                return {"name": name, "args": {"expression": expr, "variable": var}}
             if name == "evaluate_expression":
                 return {"name": name, "args": {"expression": expr}}
-            return {"name": name, "args": {"expression": expr, "variable": "x"}}
+            return {"name": name, "args": {"expression": expr, "variable": var}}
     return None
+
+
+_DEF_VAR_RE = re.compile(r"[A-Za-z]\w*\(\s*([A-Za-z]\w*)\s*\)\s*=(?!=)")
+
+
+def _detect_variable(question: str, default: str = "x") -> str:
+    """If the student wrote a function definition like g(t) = ..., differentiate w.r.t. t."""
+    match = _DEF_VAR_RE.search(question)
+    return match.group(1) if match else default
 
 
 def _looks_like_math_question(question: str) -> bool:

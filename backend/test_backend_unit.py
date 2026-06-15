@@ -116,6 +116,29 @@ class SafetyTests(unittest.TestCase):
                 tools.differentiate("Export[\"x\", 1]", "x")
             evaluate.assert_not_called()
 
+    def test_strip_definition_reduces_function_definitions(self) -> None:
+        self.assertEqual(tools._strip_definition("f(x) = 6x^3 - 9x + 4"), "6x^3 - 9x + 4")
+        self.assertEqual(tools._strip_definition("y = x^2 + 1"), "x^2 + 1")
+        self.assertEqual(tools._strip_definition("g(t) = t^2 + t"), "t^2 + t")
+        # plain expressions and genuine equations are untouched
+        self.assertEqual(tools._strip_definition("6x^3 - 9x + 4"), "6x^3 - 9x + 4")
+        self.assertEqual(tools._strip_definition("x^2 - 5x + 6 = 0"), "x^2 - 5x + 6 = 0")
+
+    def test_differentiate_accepts_function_definition_notation(self) -> None:
+        # "differentiate f(x) = ..." must compute, not be rejected for the lone '='
+        captured: dict[str, str] = {}
+
+        def fake_evaluate(code: str):
+            captured["code"] = code
+            return {"values": {"derivative": "18 x^2 - 9", "order": 1}, "chart": None}
+
+        with patch("app.wolfram.tools.session.evaluate", side_effect=fake_evaluate):
+            out = tools.differentiate("f(x) = 6x^3 - 9x + 4", "x")
+
+        self.assertNotIn("f(x)", captured["code"])  # the f(x)= wrapper was stripped
+        self.assertIn("6x^3 - 9x + 4", captured["code"])
+        self.assertEqual(out["values"]["derivative"], "18 x^2 - 9")
+
 
 class PlannerFallbackTests(unittest.TestCase):
     def test_fallback_planner_routes_common_intents(self) -> None:
