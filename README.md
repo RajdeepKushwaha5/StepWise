@@ -223,26 +223,6 @@ cd backend; .\.venv\Scripts\python.exe -m unittest test_backend_unit -v
 cd frontend; npm run lint; npm run test:format; npm run build
 ```
 
-## Known limitations
-- The app supports a vetted subset of algebra, calculus, arithmetic, plotting, and matrix analysis;
-  it is not a general-purpose STEM solver.
-- The AI-alone comparison is a demonstration baseline. It may agree with Wolfram, disagree, or fail
-  to produce a symbolically comparable final expression.
-- The number guard checks numeric claims, not the logical correctness of every explanatory sentence.
-- Rate limiting and report caching are in memory, so they reset on restart and are not shared across
-  multiple backend workers.
-- Practice progress, learning insights, and session history are browser-local and do not sync
-  across devices.
-- Practice generation selects from a curated problem bank rather than inventing arbitrary exercises;
-  this keeps the hints and expected answers predictable for the MVP.
-- The backend serializes Wolfram Cloud evaluations through one reused session; this is reliable for
-  a hackathon demo but needs a queue/session pool for production traffic.
-- The free Render backend can cold-start after inactivity. The frontend sends a best-effort health
-  request on page load so it begins waking before the student's first computation.
-- Python dependencies currently use minimum-version ranges rather than a fully pinned lock file.
-- `npm audit` currently reports two moderate findings inherited through Next.js's bundled PostCSS;
-  npm does not currently offer a non-breaking automated fix.
-
 ## Deploy
 Deploy `backend/` to a Docker-compatible host using the included `Dockerfile`, then deploy
 `frontend/` to Vercel or another Next.js host. Set `NEXT_PUBLIC_API_URL` to the deployed backend,

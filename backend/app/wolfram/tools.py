@@ -321,13 +321,18 @@ def plot_function(
 
 
 _VERIFY = """
-Module[{stu = __STU__, cor = __COR__, equiv},
- equiv = TrueQ[FullSimplify[stu - cor == 0]] || TrueQ[FullSimplify[stu == cor]];
+Module[{stu = __STU__, cor = __COR__, diff, equiv},
+ diff = FullSimplify[cor - stu];
+ equiv = TrueQ[diff == 0] || TrueQ[FullSimplify[stu == cor]];
  <|"values" -> <|
      "student" -> ToString[stu, InputForm],
      "correct" -> ToString[cor, InputForm],
      "student_simplified" -> ToString[FullSimplify[stu], InputForm],
      "correct_simplified" -> ToString[FullSimplify[cor], InputForm],
+     "student_tex" -> ToString[TeXForm[stu]],
+     "correct_tex" -> ToString[TeXForm[cor]],
+     "difference" -> ToString[diff, InputForm],
+     "difference_tex" -> ToString[TeXForm[diff]],
      "equivalent" -> equiv|>,
    "chart" -> Null|>]
 """

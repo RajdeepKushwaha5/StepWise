@@ -6,6 +6,11 @@ export type Discrepancy = {
   verified: number | string | null;
   raw_value: number | string | null;
   agree: boolean | null;
+  // step-diff: the typeset answers and the Wolfram-computed gap between them
+  verified_tex?: string | null;
+  raw_tex?: string | null;
+  difference?: string | null;
+  difference_tex?: string | null;
 };
 
 export type AskResponse = {

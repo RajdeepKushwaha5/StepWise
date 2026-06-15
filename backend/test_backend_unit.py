@@ -224,6 +224,41 @@ class PipelineTests(unittest.TestCase):
         self.assertFalse(disc["agree"])  # caught the AI teaching it wrong
         self.assertEqual(disc["raw_value"], "2 x Cos[x]")
 
+    def test_symbolic_discrepancy_carries_step_diff_fields(self) -> None:
+        def fake_run_tool(name: str, **params):
+            if name == "verify_answer":
+                return {
+                    "tool": name,
+                    "values": {
+                        "equivalent": False,
+                        "student_tex": "2 x \\cos (x)",
+                        "correct_tex": "x^2 \\cos (x)+2 x \\sin (x)",
+                        "difference": "x^2 Cos[x] + 2 x Sin[x] - 2 x Cos[x]",
+                        "difference_tex": "x^2 \\cos (x)+2 x \\sin (x)-2 x \\cos (x)",
+                    },
+                    "wolfram_code": "FullSimplify[...]",
+                }
+            return {
+                "tool": "differentiate",
+                "title": "Derivative",
+                "values": {"input": "x^2 Sin[x]", "derivative": "2 x Sin[x] + x^2 Cos[x]", "order": 1},
+                "chart_png_base64": None,
+                "wolfram_code": "D[x^2 Sin[x], x]",
+            }
+
+        with (
+            patch("app.pipeline.raw_answer", return_value={"prose": "It's 2x cos(x).", "expr": "2 x Cos[x]"}),
+            patch("app.pipeline.plan", return_value={"name": "differentiate", "args": {"expression": "x^2 Sin[x]", "variable": "x"}}),
+            patch("app.pipeline.narrate", return_value="The derivative is 2 x sin(x) + x^2 cos(x)."),
+            patch("app.pipeline.run_tool", side_effect=fake_run_tool),
+        ):
+            disc = tutor("derivative of x^2 sin(x)")["discrepancy"]
+
+        self.assertEqual(disc["raw_tex"], "2 x \\cos (x)")
+        self.assertEqual(disc["verified_tex"], "x^2 \\cos (x)+2 x \\sin (x)")
+        self.assertIn("difference_tex", disc)
+        self.assertTrue(disc["difference"])  # the exact symbolic gap is surfaced
+
     def test_pipeline_graceful_when_no_tool_matches(self) -> None:
         with patch("app.pipeline.raw_answer") as raw, patch("app.pipeline.plan") as planner:
             answer = tutor("tell me a story about triangles")

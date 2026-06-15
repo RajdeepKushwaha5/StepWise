@@ -66,23 +66,14 @@ export function AskConsole({
             ref={inputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            capture="environment"
+            aria-label="Upload a photo of a math problem"
+            title="Upload a photo of a math problem"
             className="sr-only"
             onChange={(event) => {
               void choosePhoto(event.target.files?.[0]);
               event.currentTarget.value = "";
             }}
           />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={busy}
-            title="Photograph or upload a math problem"
-            className="console-action"
-          >
-            {loading && photoName ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-            <span>{loading && photoName ? "Reading photo" : "Photo"}</span>
-          </button>
           <button
             type="button"
             onClick={onReport}
@@ -97,17 +88,47 @@ export function AskConsole({
       </div>
 
       <div className="p-3 sm:p-5">
+        {!photoDraft && !photoName && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            className="group mb-3 flex w-full items-center gap-3 border-2 border-dashed border-[var(--color-verify)] bg-[var(--color-surface-2)] px-4 py-4 text-left transition hover:bg-[#fff3ed] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span className="grid h-11 w-11 shrink-0 place-items-center bg-[var(--color-verify)] text-[#1c1b19]">
+              <Camera size={20} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-text">Photograph your homework</span>
+              <span className="block text-[11px] leading-5 text-muted">
+                Snap a problem and get an instant, Wolfram-verified audit. You review the transcription before it solves.
+              </span>
+            </span>
+            <ArrowUp size={16} className="ml-auto shrink-0 rotate-45 text-[var(--color-verify)] transition group-hover:translate-x-0.5" />
+          </button>
+        )}
+
         {(photoName || photoDraft) && (
           <div className="mb-3 flex items-center gap-2 border-l-2 border-[var(--color-verify)] bg-[var(--color-surface-2)] px-3 py-2 text-xs text-muted">
             <Camera size={13} style={{ color: "var(--color-verify)" }} />
             <span className="min-w-0 flex-1">
-              {photoDraft ? "Review the transcription below, correct any mistakes, then compute it." : `Photo queued: ${photoName}`}
+              {photoDraft
+                ? "Review the transcription below, correct any mistakes, then compute it."
+                : loading
+                  ? `Reading ${photoName}...`
+                  : `Photo queued: ${photoName}`}
             </span>
             {photoDraft && (
               <button type="button" onClick={() => { setValue(""); setPhotoName(""); onClearPhotoDraft(); }} aria-label="Discard photo transcription">
                 <X size={13} />
               </button>
             )}
+          </div>
+        )}
+
+        {!photoDraft && (
+          <div className="mb-3 flex items-center gap-2 text-[10px] uppercase text-faint">
+            <span className="h-px flex-1 bg-line" /> or type the problem <span className="h-px flex-1 bg-line" />
           </div>
         )}
 

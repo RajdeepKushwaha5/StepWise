@@ -172,12 +172,18 @@ def _symbolic_discrepancy(raw_expr: str, verified_expr: str, variable: str) -> d
         cmp = run_tool("verify_answer", student=raw_expr, correct=correct, variable=variable or "x")
     except Exception:  # noqa: BLE001 - a messy AI expression just means "no banner"
         return None
+    vals = cmp["values"]
     return {
         "kind": "symbolic",
         "headline_key": None,
         "verified": correct,
         "raw_value": raw_expr,
-        "agree": bool(cmp["values"].get("equivalent")),
+        "agree": bool(vals.get("equivalent")),
+        # the step-diff: the exact symbolic gap between the two answers, computed by Wolfram
+        "verified_tex": vals.get("correct_tex"),
+        "raw_tex": vals.get("student_tex"),
+        "difference": vals.get("difference"),
+        "difference_tex": vals.get("difference_tex"),
     }
 
 

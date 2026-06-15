@@ -42,6 +42,9 @@ export function Verdict({ r }: { r: AskResponse }) {
       : null;
   const rawShown = symbolic && discrepancy ? String(discrepancy.raw_value) : rawHeadline;
   const verifiedShown = symbolic && discrepancy ? String(discrepancy.verified) : headline;
+  const rawTex = symbolic ? discrepancy?.raw_tex ?? null : null;
+  const verifiedTex = symbolic ? discrepancy?.verified_tex ?? null : null;
+  const diffTex = symbolic ? discrepancy?.difference_tex ?? null : null;
 
   return (
     <div className="space-y-4">
@@ -52,15 +55,26 @@ export function Verdict({ r }: { r: AskResponse }) {
               <span className="step-index step-index-active"><AlertTriangle size={14} /></span>
               <div>
                 <div className="eyebrow text-[var(--color-verify)]">Discrepancy detected</div>
-                <div className="mt-1 text-sm font-bold text-text">StepWise caught an unchecked answer</div>
+                <div className="mt-1 text-sm font-bold text-text">StepWise caught the difference before you learned it</div>
               </div>
             </div>
-            <div className="grid max-w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border border-line bg-[#fffefa] px-3 py-2 font-mono text-xs">
-              <span className="truncate text-right line-through text-[var(--color-lie)]">{rawShown}</span>
-              <span className="text-[var(--color-verify)]">→</span>
-              <span className="truncate font-bold text-text">{verifiedShown}</span>
-            </div>
+            {!symbolic && (
+              <div className="grid max-w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border border-line bg-[#fffefa] px-3 py-2 font-mono text-xs">
+                <span className="truncate text-right line-through text-[var(--color-lie)]">{rawShown}</span>
+                <span className="text-[var(--color-verify)]">→</span>
+                <span className="truncate font-bold text-text">{verifiedShown}</span>
+              </div>
+            )}
           </div>
+          {symbolic && (
+            <StepDiff
+              rawTex={rawTex}
+              rawText={String(rawShown ?? "")}
+              verifiedTex={verifiedTex}
+              verifiedText={String(verifiedShown ?? "")}
+              diffTex={diffTex}
+            />
+          )}
         </motion.div>
       )}
       {confirmed && (
@@ -144,6 +158,48 @@ export function Verdict({ r }: { r: AskResponse }) {
           </div>
         </motion.section>
       </div>
+    </div>
+  );
+}
+
+function StepDiff({
+  rawTex,
+  rawText,
+  verifiedTex,
+  verifiedText,
+  diffTex,
+}: {
+  rawTex: string | null;
+  rawText: string;
+  verifiedTex: string | null;
+  verifiedText: string;
+  diffTex: string | null;
+}) {
+  return (
+    <div className="grid gap-3 border-t border-line p-4">
+      <div className="eyebrow text-[var(--color-verify)]">Step difference / exactly where the answers diverge</div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="min-w-0 border-l-2 border-[var(--color-lie)] bg-[#f8eae8] px-3 py-2">
+          <div className="eyebrow flex items-center gap-1.5"><Bot size={11} /> AI alone</div>
+          <div className="mt-1 overflow-x-auto text-[var(--color-lie)]">
+            {rawTex ? <Tex tex={rawTex} /> : <span className="font-mono text-sm">{rawText}</span>}
+          </div>
+        </div>
+        <div className="min-w-0 border-l-2 border-[var(--color-verify)] bg-[#fff3ed] px-3 py-2">
+          <div className="eyebrow flex items-center gap-1.5 text-[var(--color-verify)]"><ShieldCheck size={11} /> Wolfram computed</div>
+          <div className="mt-1 overflow-x-auto text-text">
+            {verifiedTex ? <Tex tex={verifiedTex} /> : <span className="font-mono text-sm">{verifiedText}</span>}
+          </div>
+        </div>
+      </div>
+      {diffTex && diffTex.trim() !== "0" && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border border-line bg-[var(--color-surface-2)] px-3 py-2 text-xs text-muted">
+          <span className="eyebrow">Wolfram computed the gap</span>
+          <span className="font-mono text-faint">correct − AI =</span>
+          <span className="min-w-0 overflow-x-auto text-text"><Tex tex={diffTex} /></span>
+          <span className="text-faint">— non-zero, so the answers are not equivalent.</span>
+        </div>
+      )}
     </div>
   );
 }
