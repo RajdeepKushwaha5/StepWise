@@ -388,7 +388,16 @@ class PdfAndApiTests(unittest.TestCase):
         res = client.get("/")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["status_url"], "/api/health")
+        self.assertEqual(res.json()["health_alias"], "/health")
         self.assertEqual(res.json()["interactive_docs"], "/docs")
+
+    def test_health_alias_matches_api_health(self) -> None:
+        client = TestClient(app)
+        with patch("app.main.health_check", return_value="15.0"):
+            canonical = client.get("/api/health")
+            alias = client.get("/health")
+        self.assertEqual(alias.status_code, canonical.status_code)
+        self.assertEqual(alias.json(), canonical.json())
 
     def test_photo_question_requires_transcription_confirmation(self) -> None:
         client = TestClient(app)

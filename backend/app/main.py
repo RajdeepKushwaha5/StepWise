@@ -109,8 +109,9 @@ def root() -> dict:
     return {
         "service": "StepWise API",
         "status_url": "/api/health",
+        "health_alias": "/health",
         "interactive_docs": "/docs",
-        "frontend": "http://localhost:3000",
+        "frontend": "https://step-wise-taupe.vercel.app/",
     }
 
 
@@ -162,6 +163,7 @@ def _worked_solution(body: ReportBody) -> dict:
     return report_data
 
 
+@app.get("/health", include_in_schema=False)
 @app.get("/api/health")
 def health() -> JSONResponse:
     try:

@@ -190,7 +190,7 @@ deployed backend.
 ---
 
 ## API
-- `GET  /api/health` — Wolfram `$Version` + Gemini key count
+- `GET  /api/health` or `/health` — Wolfram `$Version` + Gemini key count
 - `GET  /api/examples` — a few demo questions
 - `GET  /api/practice/topics` — available practice topics and difficulties
 - `POST /api/practice/generate` — select a curated practice problem without returning its answer
