@@ -1,0 +1,5 @@
+# Development & test dependencies (not needed to run the service).
+#   pip install -r requirements.txt -r requirements-dev.txt
+# The offline suite also runs without pytest via:  python -m unittest test_backend_unit
+-r requirements.txt
+pytest>=8.0.0

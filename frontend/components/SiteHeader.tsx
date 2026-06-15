@@ -14,10 +14,10 @@ export function SiteHeader({
 }) {
   return (
     <header className="site-nav sticky top-0 z-30 print:hidden">
-      <div className="mx-auto flex min-h-14 max-w-[1340px] flex-wrap items-center justify-between gap-3 px-3 py-2 sm:px-5 lg:px-8">
+      <div className="mx-auto flex min-h-16 max-w-[1340px] flex-wrap items-center justify-between gap-3 px-3 py-2.5 sm:px-5 lg:px-8">
         <div className="flex items-center gap-4">
           <Wordmark />
-          <span className="hidden border-l border-line pl-4 text-[10px] uppercase text-faint sm:inline">evidence console</span>
+          <span className="hidden border-l border-line pl-4 text-[11px] uppercase text-faint sm:inline">evidence console</span>
         </div>
         <nav className="flex flex-wrap items-center gap-2" aria-label="Main navigation">
           <NavItem href="/" active={active === "tutor"}><Sigma size={13} /> Tutor</NavItem>

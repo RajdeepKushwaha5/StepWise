@@ -179,6 +179,23 @@ class PlannerFallbackTests(unittest.TestCase):
         sel = _fallback_plan("differentiate the thing my teacher wrote on the board")
         self.assertFalse(_fallback_is_computable(sel))
 
+    def test_find_roots_of_phrasing_is_stripped_to_clean_equation(self) -> None:
+        from app.pipeline import _fallback_is_computable
+
+        # Regression: "find roots of ..." must not leave the words in the equation, or
+        # Wolfram would solve 'find * roots * of * 2 x^2 ...' as if they were variables.
+        sel = _fallback_plan("find roots of 2x^2 - 5x - 3 = 0")
+        self.assertEqual(sel["name"], "solve_equation")
+        self.assertEqual(sel["args"]["equation"], "2x^2 - 5x - 3 = 0")
+        self.assertTrue(_fallback_is_computable(sel))
+
+    def test_prose_words_left_in_equation_are_not_computable(self) -> None:
+        from app.pipeline import _fallback_is_computable
+
+        # Even if prose leaks through, the guard refuses to treat words as variables.
+        sel = {"name": "solve_equation", "args": {"equation": "find roots of 2x^2 - 5x - 3 == 0", "variable": "x"}}
+        self.assertFalse(_fallback_is_computable(sel))
+
 
 class PipelineTests(unittest.TestCase):
     def test_pipeline_survives_gemini_outage(self) -> None:

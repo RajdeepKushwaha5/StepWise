@@ -18,7 +18,7 @@ from app.llm.narrator import narrate, templated_answer
 from app.llm.planner import plan
 from app.llm.raw import raw_answer
 from app.verify.guard import discrepancy, verify_text
-from app.wolfram.tools import TOOLS, ToolError, _safe_expr, _strip_definition, run_tool
+from app.wolfram.tools import _ALLOWED_HEADS, TOOLS, ToolError, _safe_expr, _strip_definition, run_tool
 from app.learning import analyze_mistake
 
 # --------------------------------------------------------------------------- #
@@ -56,8 +56,9 @@ def _rough_expression(question: str) -> str:
     questions working while Gemini is briefly unavailable.
     """
     q = question
-    for trigger in ("derivative of", "integral of", "integrate", "differentiate", "solve",
-                    "simplify", "factor", "expand", "plot", "graph of", "graph",
+    for trigger in ("derivative of", "integral of", "roots of", "zeros of", "zeroes of",
+                    "solutions of", "solution of", "integrate", "differentiate", "solve for",
+                    "solve", "simplify", "factor", "expand", "plot", "graph of", "graph",
                     "calculate", "compute", "evaluate", "what is"):
         idx = q.lower().find(trigger)
         if idx != -1:
@@ -132,6 +133,14 @@ _MATH_TOKEN = re.compile(
     r"[0-9+\-*/^=\[\]{}]|\b(?:Sin|Cos|Tan|Cot|Sec|Csc|Exp|Log|Sqrt|Abs|Pi|E)\b"
 )
 
+# Multi-letter alphabetic tokens. In real Wolfram math these are only function names or
+# named constants; anything else (find, roots, of, the, ...) means the deterministic
+# extractor grabbed natural-language prose, so the match must not be trusted.
+_WORD_TOKEN_RE = re.compile(r"[A-Za-z]{2,}")
+_ALLOWED_WORDS = _ALLOWED_HEADS | {
+    "Pi", "Infinity", "Degree", "EulerGamma", "GoldenRatio", "ComplexInfinity", "Indeterminate",
+}
+
 
 def _fallback_is_computable(sel: dict[str, Any]) -> bool:
     """Trust a deterministic match only if its extracted text is clean, real math.
@@ -154,6 +163,11 @@ def _fallback_is_computable(sel: dict[str, Any]) -> bool:
             return True
         _safe_expr(probe)
     except ToolError:
+        return False
+    # Any leftover prose word (not an approved function or constant) means the
+    # extractor captured a sentence like 'find roots of ...'. Hand it to Gemini instead
+    # of solving 'find * roots * of * ...' as if those were variables.
+    if any(word not in _ALLOWED_WORDS for word in _WORD_TOKEN_RE.findall(probe)):
         return False
     return bool(_MATH_TOKEN.search(probe))
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, BrainCircuit, ChartNoAxesCombined, Lightbulb, Target } from "lucide-react";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import {
   buildLearningInsights,
@@ -25,9 +26,9 @@ export default function InsightsPage() {
   }, []);
 
   return (
-    <div className="app-frame min-h-screen">
+    <div className="app-frame flex min-h-screen flex-col">
       <SiteHeader active="insights" />
-      <main className="mx-auto max-w-[1340px] px-3 py-6 sm:px-5 lg:px-8 lg:py-10">
+      <main className="mx-auto w-full max-w-[1340px] flex-1 px-3 py-6 sm:px-5 lg:px-8 lg:py-10">
         <section className="grid gap-6 border-b border-line pb-8 lg:grid-cols-[minmax(0,1fr)_470px] lg:items-end">
           <div>
             <div className="eyebrow text-[var(--color-verify)]">Learning insights / misconception intelligence</div>
@@ -67,10 +68,11 @@ export default function InsightsPage() {
           </>
         )}
 
-        <div className="mt-6 border border-line bg-[var(--color-surface-2)] px-4 py-3 text-[10px] leading-5 text-muted">
+        <div className="mt-6 border border-line bg-[var(--color-surface-2)] px-4 py-3 text-xs leading-5 text-muted">
           <strong className="text-text">Private by design.</strong> Learning insights are computed from submitted practice attempts and stay in this browser. Mastery is 80% answer accuracy plus 20% independent completion.
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }
@@ -199,5 +201,5 @@ function Progress({ value, danger = false }: { value: number; danger?: boolean }
 }
 
 function Metric({ value, label }: { value: string; label: string }) {
-  return <div className="border-r border-line px-3 py-3 last:border-r-0"><div className="truncate font-mono text-base font-bold text-text" title={value}>{value}</div><div className="mt-1 text-[9px] uppercase leading-4 text-faint">{label}</div></div>;
+  return <div className="border-r border-line px-3 py-3 last:border-r-0"><div className="break-words font-mono text-sm font-bold leading-snug text-text sm:text-base" title={value}>{value}</div><div className="mt-1 text-[11px] uppercase leading-4 text-faint">{label}</div></div>;
 }

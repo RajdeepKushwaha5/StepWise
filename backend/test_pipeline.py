@@ -1,7 +1,25 @@
-"""End-to-end test of the StepWise tutoring loop (no HTTP)."""
+"""End-to-end test of the StepWise tutoring loop (no HTTP).
+
+This is a LIVE smoke test: it calls Gemini and Wolfram Cloud. It self-skips (exit 0)
+when the secrets in backend/.env are absent, so offline/CI runs don't fail spuriously.
+"""
 from __future__ import annotations
 
+from app import config
 from app.pipeline import check_answer, tutor
+
+
+def _secrets_ready() -> bool:
+    return bool(
+        config.GEMINI_API_KEYS
+        and config.WOLFRAM_CONSUMER_KEY
+        and config.WOLFRAM_CONSUMER_SECRET
+    )
+
+
+if not _secrets_ready():
+    print("[SKIP] test_pipeline needs live Gemini + Wolfram secrets in backend/.env.")
+    raise SystemExit(0)
 
 QUESTIONS = [
     "What is the derivative of x^2 sin(x)?",

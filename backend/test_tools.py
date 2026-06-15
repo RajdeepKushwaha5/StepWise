@@ -1,11 +1,20 @@
-"""Exercise the Wolfram math-tool library against the cloud (one session). Saves charts."""
+"""Exercise the Wolfram math-tool library against the cloud (one session). Saves charts.
+
+This is a LIVE smoke test: it requires Wolfram Cloud credentials in backend/.env and
+self-skips (exit 0) when they are absent, so offline/CI runs don't fail spuriously.
+"""
 from __future__ import annotations
 
 import base64
 from pathlib import Path
 
+from app import config
 from app.wolfram import tools
 from app.wolfram.session import health_check
+
+
+def _secrets_ready() -> bool:
+    return bool(config.WOLFRAM_CONSUMER_KEY and config.WOLFRAM_CONSUMER_SECRET)
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "out"
@@ -45,4 +54,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    if not _secrets_ready():
+        print("[SKIP] test_tools needs live Wolfram Cloud secrets in backend/.env.")
+        raise SystemExit(0)
     main()

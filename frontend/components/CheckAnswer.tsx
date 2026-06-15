@@ -85,8 +85,8 @@ export function CheckAnswer({ correct, variable }: { correct: string; variable: 
             )}
             <div className="mt-3 border-t border-line pt-3">
               <div className="text-xs font-bold text-text">{result.analysis.title}</div>
-              <p className="mt-1 text-[10px] leading-5 text-muted">{result.analysis.explanation}</p>
-              <p className="mt-1 text-[10px] leading-5 text-faint">{result.analysis.next_step}</p>
+              <p className="mt-1 text-xs leading-5 text-muted">{result.analysis.explanation}</p>
+              <p className="mt-1 text-xs leading-5 text-faint">{result.analysis.next_step}</p>
             </div>
           </div>
         )}

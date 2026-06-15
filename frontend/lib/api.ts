@@ -8,14 +8,31 @@ import type {
   PracticeRevealResponse,
   Report,
 } from "./types";
+import { prepareImageForUpload } from "./image";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export async function warmBackend(): Promise<void> {
+export type BackendHealth = {
+  status: "ok" | "degraded" | "unreachable";
+  wolfram?: string;
+  gemini_keys?: number;
+  model?: string;
+};
+
+export async function warmBackend(): Promise<BackendHealth> {
   try {
-    await fetch(`${API}/api/health`, { cache: "no-store" });
+    const res = await fetch(`${API}/api/health`, { cache: "no-store" });
+    // A degraded backend answers 503 with a JSON body describing the failure.
+    const body = (await res.json().catch(() => ({}))) as Partial<BackendHealth>;
+    return {
+      status: res.ok && body.status === "ok" ? "ok" : "degraded",
+      wolfram: body.wolfram,
+      gemini_keys: body.gemini_keys,
+      model: body.model,
+    };
   } catch {
     // Best-effort wake-up for free-tier hosting; normal requests still report real failures.
+    return { status: "unreachable" };
   }
 }
 
@@ -40,22 +57,20 @@ export async function ask(question: string): Promise<AskResponse> {
 }
 
 export async function askPhoto(file: File): Promise<PhotoTranscription> {
-  const image_base64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Could not read the photo."));
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      resolve(result.split(",", 2)[1] ?? "");
-    };
-    reader.readAsDataURL(file);
-  });
+  // Decode, fix rotation, downscale, and re-encode to a compact JPEG so large phone
+  // photos and odd formats don't fail at the size/format checks.
+  const { base64: image_base64, mimeType } = await prepareImageForUpload(file);
   const res = await fetch(`${API}/api/ask/photo`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image_base64, mime_type: file.type }),
+    body: JSON.stringify({ image_base64, mime_type: mimeType }),
   });
   if (!res.ok) throw new Error(await errorMessage(res, "Photo reading failed"));
-  return res.json();
+  const data = (await res.json()) as PhotoTranscription;
+  if (!data.question || !data.question.trim()) {
+    throw new Error("I couldn't find a math problem in that photo. Crop to just the problem and try again.");
+  }
+  return data;
 }
 
 export async function check(student: string, correct: string, variable = "x"): Promise<CheckResponse> {

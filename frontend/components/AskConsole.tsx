@@ -65,7 +65,7 @@ export function AskConsole({
           <input
             ref={inputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*"
             aria-label="Upload a photo of a math problem"
             title="Upload a photo of a math problem"
             className="sr-only"
@@ -127,7 +127,7 @@ export function AskConsole({
         )}
 
         {!photoDraft && (
-          <div className="mb-3 flex items-center gap-2 text-[10px] uppercase text-faint">
+          <div className="mb-3 flex items-center gap-2 text-[11px] uppercase text-faint">
             <span className="h-px flex-1 bg-line" /> or type the problem <span className="h-px flex-1 bg-line" />
           </div>
         )}
@@ -169,7 +169,7 @@ export function AskConsole({
       <div className="border-t border-line">
         <div className="flex items-center justify-between px-3 py-2 sm:px-5">
           <span className="eyebrow">Example commands</span>
-          <span className="text-[10px] text-faint">Enter to submit / Shift+Enter for newline</span>
+          <span className="text-[11px] text-faint">Enter to submit / Shift+Enter for newline</span>
         </div>
         <div className="grid sm:grid-cols-2">
           {sampleQuestions.map((q, index) => (
@@ -180,7 +180,7 @@ export function AskConsole({
               disabled={busy}
               className="sample-command sm:odd:border-r"
             >
-              <span className="text-[10px] font-bold text-[var(--color-verify)]">{String(index + 1).padStart(2, "0")}</span>
+              <span className="text-[11px] font-bold text-[var(--color-verify)]">{String(index + 1).padStart(2, "0")}</span>
               <span className="truncate text-xs">{q}</span>
               <ArrowUp size={13} className="rotate-45 justify-self-end text-faint" />
             </button>

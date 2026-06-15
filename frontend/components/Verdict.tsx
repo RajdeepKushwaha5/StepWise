@@ -49,19 +49,26 @@ export function Verdict({ r }: { r: AskResponse }) {
   return (
     <div className="space-y-4">
       {caught && (
-        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="caught-banner">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.965, y: -8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+          className="alert-banner"
+        >
           <div className="panel-header border-b-0 bg-transparent">
             <div className="flex items-center gap-3">
-              <span className="step-index step-index-active"><AlertTriangle size={14} /></span>
+              <span className="alert-badge"><AlertTriangle size={15} /></span>
               <div>
-                <div className="eyebrow text-[var(--color-verify)]">Discrepancy detected</div>
-                <div className="mt-1 text-sm font-bold text-text">StepWise caught the difference before you learned it</div>
+                <div className="eyebrow text-[var(--color-lie)]">Mistake caught · AI vs Wolfram</div>
+                <div className="font-display mt-0.5 text-base font-bold leading-tight text-text sm:text-lg">
+                  The AI&apos;s answer is wrong — StepWise caught it before you learned it
+                </div>
               </div>
             </div>
             {!symbolic && (
-              <div className="grid max-w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border border-line bg-[#fffefa] px-3 py-2 font-mono text-xs">
+              <div className="alert-compare max-w-full font-mono text-xs">
                 <span className="truncate text-right line-through text-[var(--color-lie)]">{rawShown}</span>
-                <span className="text-[var(--color-verify)]">→</span>
+                <span className="font-bold text-[var(--color-verify)]">→</span>
                 <span className="truncate font-bold text-text">{verifiedShown}</span>
               </div>
             )}
@@ -78,13 +85,20 @@ export function Verdict({ r }: { r: AskResponse }) {
         </motion.div>
       )}
       {confirmed && (
-        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="caught-banner">
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="confirm-banner"
+        >
           <div className="panel-header border-b-0 bg-transparent">
             <div className="flex items-center gap-3">
-              <span className="step-index step-index-active"><BadgeCheck size={14} /></span>
+              <span className="confirm-badge"><BadgeCheck size={15} /></span>
               <div>
-                <div className="eyebrow text-[var(--color-verify)]">Independent confirmation</div>
-                <div className="mt-1 text-sm font-bold text-text">The AI answer agrees with the Wolfram result</div>
+                <div className="eyebrow text-[var(--color-confirm)]">Independently confirmed</div>
+                <div className="font-display mt-0.5 text-base font-bold leading-tight text-text sm:text-lg">
+                  Wolfram independently confirms the AI&apos;s answer is correct
+                </div>
               </div>
             </div>
           </div>
@@ -102,7 +116,7 @@ export function Verdict({ r }: { r: AskResponse }) {
                   <div className="tnum mt-1 break-words font-mono text-2xl font-bold line-through text-[var(--color-lie)]">{rawHeadline}</div>
                 </div>
               )}
-              <MathText text={r.raw_answer} className="text-sm leading-7 text-muted" />
+              <MathText text={r.raw_answer} className="prose-readable text-sm leading-7 text-muted" />
             </div>
           </motion.section>
           <aside className="raw-brief p-4">
@@ -130,7 +144,7 @@ export function Verdict({ r }: { r: AskResponse }) {
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
               <div>
                 <div className="eyebrow">Guided explanation</div>
-                <MathText text={r.verified_answer} className="mt-2 max-w-3xl text-sm leading-7 text-text" />
+                <MathText text={r.verified_answer} className="prose-readable mt-2 max-w-3xl text-sm leading-7 text-text" />
               </div>
               {r.verified_clean && (
                 <span className="status-chip status-chip-accent">
@@ -138,7 +152,7 @@ export function Verdict({ r }: { r: AskResponse }) {
                 </span>
               )}
             </div>
-            <p className="mt-3 text-[10px] leading-5 text-faint">{r.verification.details}</p>
+            <p className="mt-3 text-xs leading-5 text-faint">{r.verification.details}</p>
 
             {(headline || tex) && (
               <div className="mt-4 border-l-2 border-[var(--color-verify)] bg-[#fff3ed] px-4 py-3">

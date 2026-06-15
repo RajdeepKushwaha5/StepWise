@@ -11,6 +11,7 @@ import {
   Grid3X3,
   ShieldCheck,
 } from "lucide-react";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
 const tools = [
@@ -35,9 +36,9 @@ const contract = [
 
 export default function CapabilitiesPage() {
   return (
-    <div className="app-frame min-h-screen">
+    <div className="app-frame flex min-h-screen flex-col">
       <SiteHeader active="capabilities" />
-      <main className="mx-auto max-w-[1340px] px-3 py-6 sm:px-5 lg:px-8 lg:py-10">
+      <main className="mx-auto w-full max-w-[1340px] flex-1 px-3 py-6 sm:px-5 lg:px-8 lg:py-10">
         <section className="grid gap-6 border-b border-line pb-8 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-end">
           <div>
             <div className="eyebrow text-[var(--color-verify)]">Tool lab / supported computation</div>
@@ -79,7 +80,7 @@ export default function CapabilitiesPage() {
                   <h2 className="mt-4 text-sm font-bold text-text">{tool.name}</h2>
                   <div className="mt-1 font-mono text-[9px] uppercase text-faint">{tool.api}</div>
                   <p className="mt-4 flex-1 text-xs leading-6 text-muted">{tool.output}</p>
-                  <div className="mt-4 border-l-2 border-[var(--color-verify)] bg-[#fff3ed] px-3 py-2 text-[10px] leading-5 text-muted">
+                  <div className="mt-4 border-l-2 border-[var(--color-verify)] bg-[#fff3ed] px-3 py-2 text-xs leading-5 text-muted">
                     {tool.example}
                   </div>
                   <Link
@@ -107,7 +108,7 @@ export default function CapabilitiesPage() {
               {contract.map(([item, method, status]) => (
                 <div key={item} className="grid gap-2 bg-[var(--color-surface)] px-4 py-3 sm:grid-cols-[0.8fr_1.4fr_auto] sm:items-center">
                   <div className="text-xs font-bold text-text">{item}</div>
-                  <div className="text-[10px] leading-5 text-muted">{method}</div>
+                  <div className="text-xs leading-5 text-muted">{method}</div>
                   <span className={`status-chip ${status === "Unchecked" ? "" : "status-chip-accent"}`}>{status}</span>
                 </div>
               ))}
@@ -126,6 +127,7 @@ export default function CapabilitiesPage() {
           </div>
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

@@ -40,6 +40,54 @@ REPORT_CACHE: dict[tuple[str, str], dict] = {}
 MAX_CACHED_REPORTS = 32
 _RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
 _RATE_LOCK = threading.Lock()
+# Cap the number of tracked client buckets so the limiter can't grow without bound
+# on a long-lived server; stale buckets are pruned each request and, as a backstop,
+# the oldest bucket is evicted once this ceiling is reached.
+_MAX_RATE_BUCKETS = 10_000
+
+
+def _client_ip(request: Request) -> str:
+    """Best-effort real client IP.
+
+    Behind a proxy (Render/Vercel/etc.) request.client.host is the proxy address, so
+    every visitor would share one bucket. The first hop of X-Forwarded-For is the
+    original client; fall back to the direct peer when the header is absent.
+    """
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        first = forwarded.split(",", 1)[0].strip()
+        if first:
+            return first
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
+    return request.client.host if request.client else "unknown"
+
+
+def _prune_rate_buckets(now: float, keep: str) -> None:
+    """Drop fully-aged-out buckets so memory stays bounded as clients come and go."""
+    for ip in [ip for ip, hits in _RATE_BUCKETS.items() if not hits or now - hits[-1] >= 60]:
+        if ip != keep:
+            del _RATE_BUCKETS[ip]
+    if keep not in _RATE_BUCKETS and len(_RATE_BUCKETS) >= _MAX_RATE_BUCKETS:
+        # Backstop against a flood of distinct IPs: drop the least-recently-seen bucket.
+        oldest = min(_RATE_BUCKETS, key=lambda ip: _RATE_BUCKETS[ip][-1] if _RATE_BUCKETS[ip] else 0.0)
+        del _RATE_BUCKETS[oldest]
+
+
+def _rate_limited(request: Request) -> bool:
+    """Per-client sliding-window limiter. Returns True when the caller is over budget."""
+    client = _client_ip(request)
+    now = time.monotonic()
+    with _RATE_LOCK:
+        _prune_rate_buckets(now, client)
+        bucket = _RATE_BUCKETS[client]
+        while bucket and now - bucket[0] >= 60:
+            bucket.popleft()
+        if len(bucket) >= config.RATE_LIMIT_PER_MINUTE:
+            return True
+        bucket.append(now)
+        return False
 
 # A few demo problems that reliably show the "AI alone vs Wolfram-verified" gap.
 EXAMPLE_QUESTIONS = [
@@ -120,19 +168,12 @@ async def protect_public_api(request: Request, call_next):
     if request.url.path.startswith("/api/") and request.method != "GET":
         if config.STEPWISE_API_KEY and request.headers.get("x-stepwise-key") != config.STEPWISE_API_KEY:
             return JSONResponse({"detail": "Missing or invalid API key."}, status_code=401)
-        client = request.client.host if request.client else "unknown"
-        now = time.monotonic()
-        with _RATE_LOCK:
-            bucket = _RATE_BUCKETS[client]
-            while bucket and now - bucket[0] >= 60:
-                bucket.popleft()
-            if len(bucket) >= config.RATE_LIMIT_PER_MINUTE:
-                return JSONResponse(
-                    {"detail": "Too many requests. Wait a minute and try again."},
-                    status_code=429,
-                    headers={"Retry-After": "60"},
-                )
-            bucket.append(now)
+        if _rate_limited(request):
+            return JSONResponse(
+                {"detail": "Too many requests. Wait a minute and try again."},
+                status_code=429,
+                headers={"Retry-After": "60"},
+            )
     return await call_next(request)
 
 

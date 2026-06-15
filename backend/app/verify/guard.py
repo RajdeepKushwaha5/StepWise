@@ -55,18 +55,68 @@ def _flatten(values: dict[str, Any]) -> list[float]:
     return nums
 
 
+def _scalar_numbers(values: dict[str, Any]) -> list[float]:
+    """Numbers Wolfram returned as genuine numeric values (not digits inside a string)."""
+    nums: list[float] = []
+    for v in values.values():
+        if isinstance(v, bool):
+            continue
+        if isinstance(v, (int, float)):
+            nums.append(float(v))
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                if isinstance(x, (int, float)) and not isinstance(x, bool):
+                    nums.append(float(x))
+    return nums
+
+
+def _string_numbers(values: dict[str, Any]) -> list[float]:
+    """Numbers that only appear as digits inside a Wolfram-returned string/list entry,
+    e.g. the coefficients and exponents of a symbolic result like "2 x Sin[x] + x^2 ...".
+    """
+    nums: list[float] = []
+    for v in values.values():
+        if isinstance(v, (bool, int, float)):
+            continue
+        if isinstance(v, str):
+            nums.extend(extract_numbers(v))
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                if isinstance(x, str):
+                    nums.extend(extract_numbers(x))
+    return nums
+
+
 def _close(a: float, b: float, rel: float = 0.02, absol: float = 0.05) -> bool:
     return abs(a - b) <= max(absol, rel * max(abs(a), abs(b)))
+
+
+def _exact(a: float, b: float) -> bool:
+    """Tight equality used for digits scraped out of a symbolic string. Approximate
+    matching is reserved for genuine numeric values; incidental digits inside a
+    symbolic result (an exponent, a coefficient) must match the narrated number exactly
+    so a fabricated 'about 3' can't borrow a stray 3 from 'x^3'."""
+    return abs(a - b) <= 1e-9 * max(1.0, abs(a), abs(b))
 
 
 def verify_text(
     text: str, values: dict[str, Any], allowed_inputs: list[float] | None = None
 ) -> dict[str, Any]:
-    """Return {ok, unverified:[...]} — ok means no fabricated numbers."""
-    verified = _flatten(values) + list(allowed_inputs or [])
+    """Return {ok, unverified:[...]} — ok means no fabricated numbers.
+
+    A narrated number is accepted when it is *close* to a genuine numeric value Wolfram
+    returned (or an explicit problem input), or when it *exactly* matches a number that
+    appears inside Wolfram's symbolic result string. Splitting the two keeps the tolerance
+    that floating-point answers need while preventing a fabricated number from being
+    excused by an unrelated digit elsewhere in the computed output.
+    """
+    tolerant = _scalar_numbers(values) + list(allowed_inputs or [])
+    symbolic = _string_numbers(values)
     unverified: list[float] = []
     for n in extract_numbers(text):
-        if any(_close(n, v) for v in verified):
+        if any(_close(n, v) for v in tolerant):
+            continue
+        if any(_exact(n, v) for v in symbolic):
             continue
         unverified.append(n)
     return {"ok": len(unverified) == 0, "unverified": unverified}

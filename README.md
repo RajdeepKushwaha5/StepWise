@@ -20,7 +20,7 @@ Verified on June 15, 2026:
 - Deployed frontend routes serve successfully at `https://step-wise-taupe.vercel.app/`.
 - Backend health is `ok` at `http://localhost:8000/api/health`.
 - Deployed backend health is `ok` at `https://stepwise-api-cba3.onrender.com/api/health`.
-- All 40 backend unit tests pass.
+- All 47 backend unit tests pass.
 - The live Wolfram tool suite and full Gemini → Wolfram tutoring pipeline pass.
 - All 12 practice topic/difficulty combinations generate successfully.
 - Guided hints, wrong/correct answer checks, mistake analysis, history export, and study-report PDF
@@ -216,7 +216,7 @@ result.
 ```powershell
 # backend — fast unit tests, no network (Wolfram/Gemini mocked)
 cd backend; .\.venv\Scripts\python.exe -m unittest test_backend_unit -v
-# backend — live Wolfram Cloud round-trip (needs .env)
+# backend — live Wolfram/Gemini smoke tests (self-skip when .env secrets are absent)
 .\.venv\Scripts\python.exe test_tools.py
 .\.venv\Scripts\python.exe test_pipeline.py
 # frontend

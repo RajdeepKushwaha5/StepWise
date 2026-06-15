@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileStack, Loader2, Search, Trash2 } from "lucide-react";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { deleteHistory, readHistory } from "@/lib/history";
 import { studyReportPdf } from "@/lib/api";
@@ -58,9 +59,9 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="app-frame min-h-screen">
+    <div className="app-frame flex min-h-screen flex-col">
       <SiteHeader active="history" />
-      <main className="mx-auto max-w-[1340px] px-3 py-6 sm:px-5 lg:px-8 lg:py-10">
+      <main className="mx-auto w-full max-w-[1340px] flex-1 px-3 py-6 sm:px-5 lg:px-8 lg:py-10">
         <section className="grid gap-6 border-b border-line pb-8 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-end">
           <div>
             <div className="eyebrow text-[var(--color-verify)]">Session history / local study library</div>
@@ -115,7 +116,7 @@ export default function HistoryPage() {
                         <span className="text-[9px] text-faint">{new Date(item.createdAt).toLocaleString()}</span>
                       </div>
                       <h2 className="mt-3 break-words text-sm font-bold leading-6 text-text">{item.question}</h2>
-                      <p className="mt-2 line-clamp-2 text-[10px] leading-5 text-muted">{item.summary}</p>
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">{item.summary}</p>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link href={`/?question=${encodeURIComponent(item.question)}`} className="console-action console-action-primary">Reopen in tutor</Link>
                         <button onClick={() => void downloadItems([item], "stepwise-saved-solution.pdf")} disabled={downloading} className="console-action"><Download size={13} /> PDF</button>
@@ -134,6 +135,7 @@ export default function HistoryPage() {
           {error && <div className="border-t border-line px-4 py-3 text-xs text-[var(--color-lie)]">{error}</div>}
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

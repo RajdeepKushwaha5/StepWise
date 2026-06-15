@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BadgeCheck, BookOpenCheck, Eye, Lightbulb, Loader2, RefreshCw, Target, XCircle } from "lucide-react";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { checkPractice, generatePractice, practiceHint, revealPractice } from "@/lib/api";
 import { readPracticeStats, savePracticeHistory, updatePracticeStats, type PracticeStats } from "@/lib/history";
@@ -140,9 +141,9 @@ export default function PracticePage() {
   const accuracy = stats.attempted ? Math.round((stats.correct / stats.attempted) * 100) : 0;
 
   return (
-    <div className="app-frame min-h-screen">
+    <div className="app-frame flex min-h-screen flex-col">
       <SiteHeader active="practice" />
-      <main className="mx-auto max-w-[1340px] px-3 py-6 sm:px-5 lg:px-8 lg:py-10">
+      <main className="mx-auto w-full max-w-[1340px] flex-1 px-3 py-6 sm:px-5 lg:px-8 lg:py-10">
         <section className="grid gap-6 border-b border-line pb-8 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-end">
           <div>
             <div className="eyebrow text-[var(--color-verify)]">Practice mode / guided learning</div>
@@ -254,6 +255,7 @@ export default function PracticePage() {
           </section>
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

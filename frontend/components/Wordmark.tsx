@@ -16,8 +16,8 @@ export function Mark({ size = 26 }: { size?: number }) {
 export function Wordmark() {
   return (
     <div className="flex select-none items-center gap-2.5">
-      <Mark size={25} />
-      <span className="font-mono text-[18px] font-bold text-text">
+      <Mark size={28} />
+      <span className="font-mono text-[21px] font-bold text-text">
         Step<span style={{ color: "var(--color-verify)" }}>Wise</span>
       </span>
     </div>

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, Loader2, Sparkles } from "lucide-react";
 import { AskConsole } from "@/components/AskConsole";
 import { Verdict } from "@/components/Verdict";
 import { ReportView } from "@/components/ReportView";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ask, askPhoto, report, reportPdf } from "@/lib/api";
 import { saveTutorHistory } from "@/lib/history";
@@ -18,6 +19,15 @@ const SAMPLE_QS = [
   "Simplify (x^2 - 1)/(x - 1)",
   "Factor x^3 - x",
   "Plot sin(x)/x",
+];
+
+// Curated empty-state launchers — the first reliably exposes an AI slip (product rule),
+// the second usually agrees, so a judge sees both outcomes in two clicks.
+const STARTERS: { q: string; tag: string; tone: "catch" | "confirm" }[] = [
+  { q: "What is the derivative of x^2 sin(x)?", tag: "Often catches a mistake", tone: "catch" },
+  { q: "Solve x^2 - 5x + 6 = 0", tag: "Usually confirmed", tone: "confirm" },
+  { q: "Integrate x^2 from 0 to 3", tag: "Definite integral + graph", tone: "confirm" },
+  { q: "Factor x^3 - x", tag: "Symbolic equivalence", tone: "confirm" },
 ];
 
 const LOAD_STEPS = [
@@ -85,12 +95,14 @@ export default function Home() {
   }
 
   async function handlePhoto(file: File) {
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setError("Use a JPEG, PNG, or WebP photo.");
+    if (!file.type.startsWith("image/")) {
+      setError("That file isn't an image. Choose a photo or screenshot of the problem.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("The photo is larger than 5 MB. Crop or compress it and try again.");
+    // The client pipeline downscales/re-encodes, so we only block absurdly large files
+    // (a guard against decoding something pathological) rather than normal phone photos.
+    if (file.size > 30 * 1024 * 1024) {
+      setError("That image is very large. Crop to just the problem, or take a smaller photo.");
       return;
     }
     setLoading(true);
@@ -147,16 +159,16 @@ export default function Home() {
 
   return (
     <div className="app-frame flex min-h-screen flex-col">
-      <SiteHeader active="tutor" showProofChips />
+      <SiteHeader active="tutor" />
 
       <main className="mx-auto w-full max-w-[1340px] flex-1 px-3 py-5 sm:px-5 lg:px-8 lg:py-8">
         <section className="mb-5 grid gap-4 border-b border-line pb-5 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
           <div>
             <div className="eyebrow text-[var(--color-verify)]">Wolfram-verified math tutor / session 001</div>
-            <h1 className="mt-3 max-w-3xl text-3xl font-bold leading-[1.12] text-text sm:text-5xl">
+            <h1 className="font-display mt-3 max-w-3xl text-3xl font-bold leading-[1.12] text-text sm:text-5xl">
               Ask the model. <span className="text-[var(--color-verify)]">Inspect the evidence.</span>
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted">
+            <p className="prose-readable mt-3 max-w-2xl text-sm leading-7 text-muted">
               Gemini provides the comparison and explanation. Wolfram Language computes the math. StepWise shows the difference before a student learns the wrong step.
             </p>
           </div>
@@ -190,6 +202,9 @@ export default function Home() {
         <div className="mt-5">
           <AnimatePresence mode="wait">
             {loading && <LoadingView key="loading" question={asked} />}
+            {!loading && !result && (
+              <EmptyState key="empty" onPick={handleAsk} disabled={loading || reporting} />
+            )}
             {!loading && result && (
               <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
@@ -208,12 +223,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="border-t border-line px-3 py-3 text-[10px] uppercase text-faint sm:px-5 lg:px-8">
-        <div className="mx-auto flex max-w-[1340px] flex-wrap items-center justify-between gap-2">
-          <span>StepWise / built for OSC AI Build 1.0</span>
-          <span>Computed first / explained second / provenance attached</span>
-        </div>
-      </footer>
+      <SiteFooter />
 
       {reportData && (
         <ReportView report={reportData} downloading={downloadingPdf} onDownload={handlePdfDownload} onClose={() => setReportData(null)} />
@@ -225,8 +235,8 @@ export default function Home() {
 function Metric({ value, label }: { value: string; label: string }) {
   return (
     <div className="border-r border-line px-3 py-3 last:border-r-0">
-      <div className="font-mono text-lg font-bold text-text">{value}</div>
-      <div className="mt-1 text-[9px] uppercase leading-4 text-faint">{label}</div>
+      <div className="font-mono text-xl font-bold text-text">{value}</div>
+      <div className="mt-1 text-[11px] uppercase leading-4 text-faint">{label}</div>
     </div>
   );
 }
@@ -234,7 +244,21 @@ function Metric({ value, label }: { value: string; label: string }) {
 function LoadingView({ question }: { question: string }) {
   const [active, setActive] = useState(0);
   useEffect(() => {
-    const timer = setInterval(() => setActive((step) => Math.min(step + 1, LOAD_STEPS.length - 1)), 1050);
+    // Decelerating cadence that mirrors where time is actually spent: route + compare
+    // are quick, computing is slower, and the trace HOLDS on the final
+    // "explain + guard" step until the real response arrives and replaces this view —
+    // so it never claims "done" before the answer lands.
+    const start = performance.now();
+    const thresholds = [0, 550, 1500, 3200]; // ms at which each step lights up
+    const timer = setInterval(() => {
+      const elapsed = performance.now() - start;
+      let step = 0;
+      for (let i = 0; i < thresholds.length; i += 1) {
+        if (elapsed >= thresholds[i]) step = i;
+      }
+      // Never auto-complete the last step; it stays "in progress" until results render.
+      setActive(Math.min(step, LOAD_STEPS.length - 1));
+    }, 120);
     return () => clearInterval(timer);
   }, []);
 
@@ -243,25 +267,75 @@ function LoadingView({ question }: { question: string }) {
       <div className="panel-header">
         <div>
           <div className="eyebrow text-[var(--color-verify)]">Live verification trace</div>
-          <div className="mt-1 max-w-3xl truncate text-sm font-bold text-text">{question}</div>
+          <div className="font-display mt-1 max-w-3xl truncate text-base font-bold text-text">{question}</div>
         </div>
-        <Loader2 size={16} className="animate-spin text-[var(--color-verify)]" />
+        <Loader2 size={18} className="animate-spin text-[var(--color-verify)]" />
       </div>
       <div className="grid gap-0 p-4 lg:grid-cols-4">
-        {LOAD_STEPS.map(([title, description], index) => (
-          <div key={title} className="trace-line flex gap-3 border-b border-line py-3 last:border-b-0 lg:border-b-0 lg:border-r lg:px-4 lg:first:pl-0 lg:last:border-r-0">
-            <span className={`step-index ${index <= active ? "step-index-active" : ""}`}>
-              {index < active ? <Check size={13} /> : String(index + 1).padStart(2, "0")}
-            </span>
-            <div>
-              <div className="text-xs font-bold uppercase text-text">{title}</div>
-              <p className="mt-1 text-[10px] leading-5 text-muted">{description}</p>
+        {LOAD_STEPS.map(([title, description], index) => {
+          const done = index < active;
+          const current = index === active;
+          return (
+            <div key={title} className="trace-line flex gap-3 border-b border-line py-3 last:border-b-0 lg:border-b-0 lg:border-r lg:px-4 lg:first:pl-0 lg:last:border-r-0">
+              <span className={`step-index ${index <= active ? "step-index-active" : ""}`}>
+                {done ? <Check size={14} /> : current ? <Loader2 size={13} className="animate-spin" /> : String(index + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <div className="text-sm font-bold uppercase text-text">{title}</div>
+                <p className="mt-1 text-xs leading-5 text-muted">{description}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-2 text-[10px] uppercase text-faint">
+      <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-2 text-[11px] uppercase text-faint">
         trace advancing <ArrowRight size={12} className="text-[var(--color-verify)]" />
+      </div>
+    </motion.section>
+  );
+}
+
+function EmptyState({ onPick, disabled }: { onPick: (q: string) => void; disabled?: boolean }) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="panel"
+    >
+      <div className="panel-header">
+        <div className="flex items-center gap-3">
+          <span className="step-index step-index-active"><Sparkles size={14} /></span>
+          <div>
+            <div className="eyebrow text-[var(--color-verify)]">See it in action</div>
+            <div className="font-display mt-0.5 text-base font-bold text-text sm:text-lg">Not sure where to start? Try one of these</div>
+          </div>
+        </div>
+        <span className="hidden text-xs text-faint sm:inline">One click runs a full audit</span>
+      </div>
+      <div className="grid gap-px bg-line sm:grid-cols-2">
+        {STARTERS.map(({ q, tag, tone }, index) => (
+          <button
+            key={q}
+            type="button"
+            onClick={() => onPick(q)}
+            disabled={disabled}
+            className="group flex items-center gap-3 bg-[var(--color-surface)] px-4 py-4 text-left transition hover:bg-[var(--color-surface-2)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span className="step-index shrink-0">{String(index + 1).padStart(2, "0")}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-mono text-sm font-bold text-text">{q}</span>
+              <span
+                className={`mt-1 inline-flex items-center gap-1 text-[11px] font-bold uppercase ${
+                  tone === "catch" ? "text-[var(--color-lie)]" : "text-[var(--color-confirm)]"
+                }`}
+              >
+                {tag}
+              </span>
+            </span>
+            <ArrowUpRight size={18} className="shrink-0 text-faint transition group-hover:translate-x-0.5 group-hover:text-[var(--color-verify)]" />
+          </button>
+        ))}
       </div>
     </motion.section>
   );
