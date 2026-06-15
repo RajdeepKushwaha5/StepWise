@@ -7,7 +7,7 @@ Built for **OSC AI Build 1.0** · Theme: AI for Social Impact (education) · Fut
 
 **Live demo:** [step-wise-taupe.vercel.app](https://step-wise-taupe.vercel.app/) ·
 **Source code:** [github.com/RajdeepKushwaha5/StepWise](https://github.com/RajdeepKushwaha5/StepWise) ·
-**Demo video:** _add link after recording_
+**Demo video:** [Watch the StepWise demo on YouTube](https://youtu.be/aNBWgXBYtb4)
 
 ---
 
@@ -20,7 +20,7 @@ Verified on June 15, 2026:
 - Deployed frontend routes serve successfully at `https://step-wise-taupe.vercel.app/`.
 - Backend health is `ok` at `http://localhost:8000/api/health`.
 - Deployed backend health is `ok` at `https://stepwise-api-cba3.onrender.com/api/health`.
-- All 39 backend unit tests pass.
+- All 40 backend unit tests pass.
 - The live Wolfram tool suite and full Gemini → Wolfram tutoring pipeline pass.
 - All 12 practice topic/difficulty combinations generate successfully.
 - Guided hints, wrong/correct answer checks, mistake analysis, history export, and study-report PDF
