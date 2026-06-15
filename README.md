@@ -13,13 +13,13 @@ Built for **OSC AI Build 1.0** · Theme: AI for Social Impact (education) · Fut
 
 ## Project status
 
-The core product works locally and has been verified end to end. The frontend is deployed on
-Vercel; configure its `NEXT_PUBLIC_API_URL` with the deployed backend URL before public judging.
+The product is deployed and has been verified end to end against the live frontend and backend.
 
-Verified on June 11, 2026:
+Verified on June 15, 2026:
 - Frontend serves successfully at `http://localhost:3000`.
 - Deployed frontend routes serve successfully at `https://step-wise-taupe.vercel.app/`.
 - Backend health is `ok` at `http://localhost:8000/api/health`.
+- Deployed backend health is `ok` at `https://stepwise-api-cba3.onrender.com/api/health`.
 - All 39 backend unit tests pass.
 - The live Wolfram tool suite and full Gemini → Wolfram tutoring pipeline pass.
 - All 12 practice topic/difficulty combinations generate successfully.
@@ -38,7 +38,8 @@ answer at all.
 
 ## The idea
 StepWise separates **teaching** from **math**:
-- A deterministic **intent router** handles common math; Gemini translates unfamiliar phrasing.
+- A deterministic **intent router** handles common math; Gemini can map unfamiliar supported
+  phrasing to approved tools, while unmapped requests fail closed without pretending to verify them.
 - **Gemini** explains the returned computation like a patient tutor.
 - **Wolfram Language** computes every displayed result and graph — the source of the answer.
 - A **number-guard** rejects any number in the explanation that didn't come from Wolfram.
@@ -55,8 +56,8 @@ StepWise separates **teaching** from **math**:
 ## How AI is integrated (judging note)
 AI is the core of the product, not a bolt-on:
 - A deterministic router maps common questions to Wolfram tools without an LLM. **Gemini (free
-  tier only)** uses function-calling to translate unfamiliar plain-English questions into Wolfram
-  syntax, then narrates the result pedagogically.
+  tier only)** uses function-calling to translate unfamiliar supported questions into approved
+  Wolfram operations, then narrates the result pedagogically.
 - A second **"AI alone"** Gemini pass answers with no tools, and StepWise **symbolically compares** it to
   the Wolfram-computed answer (`FullSimplify[a - b == 0]`) to surface mistakes live.
 - Multi-key rotation + model fallback keep it reliable on the free tier.
@@ -236,6 +237,8 @@ cd frontend; npm run lint; npm run test:format; npm run build
   this keeps the hints and expected answers predictable for the MVP.
 - The backend serializes Wolfram Cloud evaluations through one reused session; this is reliable for
   a hackathon demo but needs a queue/session pool for production traffic.
+- The free Render backend can cold-start after inactivity. The frontend sends a best-effort health
+  request on page load so it begins waking before the student's first computation.
 - Python dependencies currently use minimum-version ranges rather than a fully pinned lock file.
 - `npm audit` currently reports two moderate findings inherited through Next.js's bundled PostCSS;
   npm does not currently offer a non-breaking automated fix.

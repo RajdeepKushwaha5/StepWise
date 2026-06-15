@@ -11,6 +11,14 @@ import type {
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export async function warmBackend(): Promise<void> {
+  try {
+    await fetch(`${API}/api/health`, { cache: "no-store" });
+  } catch {
+    // Best-effort wake-up for free-tier hosting; normal requests still report real failures.
+  }
+}
+
 async function errorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const body = (await res.json()) as { detail?: unknown };
