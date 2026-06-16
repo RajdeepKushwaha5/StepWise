@@ -22,7 +22,7 @@ from app.pipeline import check_answer, tutor
 from app.report import build_report
 from app.llm.vision import extract_question
 from app.wolfram.session import health_check
-from app.wolfram.tools import ToolError
+from app.wolfram.tools import ToolError, solution_steps
 
 app = FastAPI(title="StepWise", description="A STEM tutor that computes results with Wolfram Language.")
 
@@ -102,6 +102,7 @@ EXAMPLE_QUESTIONS = [
 
 class AskBody(BaseModel):
     question: str = Field(min_length=1, max_length=1200)
+    language: str = Field(default="English", max_length=40)
 
 
 class PhotoAskBody(BaseModel):
@@ -113,6 +114,11 @@ class CheckBody(BaseModel):
     student: str = Field(min_length=1, max_length=400)
     correct: str = Field(min_length=1, max_length=400)
     variable: str = Field(default="x", min_length=1, max_length=32)
+
+
+class StepsBody(BaseModel):
+    tool: str = Field(min_length=1, max_length=80)
+    tool_args: dict[str, Any] = Field(default_factory=dict)
 
 
 class ReportBody(BaseModel):
@@ -266,7 +272,7 @@ def practice_reveal(body: PracticeHintBody) -> dict:
 def ask(body: AskBody) -> dict:
     if not body.question.strip():
         raise HTTPException(400, "question is empty")
-    return tutor(body.question)
+    return tutor(body.question, body.language)
 
 
 @app.post("/api/ask/photo")
@@ -288,6 +294,12 @@ def ask_photo(body: PhotoAskBody) -> dict:
     except Exception as exc:
         raise HTTPException(503, "I could not read that photo right now. Try again or type the problem.") from exc
     return {"question": question, "confirmed": False}
+
+
+@app.post("/api/steps")
+def steps(body: StepsBody) -> dict:
+    # On-demand, Wolfram-verified worked steps. Isolated: returns [] rather than erroring.
+    return {"steps": solution_steps(body.tool, body.tool_args)}
 
 
 @app.post("/api/check")

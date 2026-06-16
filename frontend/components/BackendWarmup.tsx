@@ -9,11 +9,26 @@ export function BackendWarmup() {
 
   useEffect(() => {
     let active = true;
-    void warmBackend().then((result) => {
-      if (active) setHealth(result);
-    });
+    let timer: ReturnType<typeof setTimeout>;
+    let attempts = 0;
+    const maxAttempts = 20; // keep pinging (~1.5 min) so a cold free-tier host wakes fully
+
+    async function poll() {
+      if (!active) return;
+      const result = await warmBackend();
+      if (!active) return;
+      setHealth(result);
+      attempts += 1;
+      // Stop once healthy; otherwise keep waking it and refreshing the notice.
+      if (result.status !== "ok" && attempts < maxAttempts) {
+        timer = setTimeout(poll, 4500);
+      }
+    }
+
+    void poll();
     return () => {
       active = false;
+      clearTimeout(timer);
     };
   }, []);
 
@@ -21,8 +36,8 @@ export function BackendWarmup() {
 
   const message =
     health.status === "unreachable"
-      ? "Can't reach the StepWise backend right now. It may be waking up — retry in a moment."
-      : "The StepWise backend is running in a degraded state (Wolfram or Gemini is unavailable), so answers may fail. Try again shortly.";
+      ? "Waking up the StepWise backend — first load on free hosting can take up to a minute. Retrying automatically…"
+      : "The StepWise backend is starting up (Wolfram or Gemini not ready yet). Retrying automatically — answers will work in a moment.";
 
   return (
     <output

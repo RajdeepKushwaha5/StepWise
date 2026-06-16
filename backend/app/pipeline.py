@@ -268,13 +268,17 @@ def _build_discrepancy(
 
 
 def _grounded_answer(
-    question: str, title: str, values: dict[str, Any], allowed_inputs: list[float]
+    question: str,
+    title: str,
+    values: dict[str, Any],
+    allowed_inputs: list[float],
+    language: str = "English",
 ) -> tuple[str, dict[str, Any]]:
     try:
-        answer = narrate(question, title, values)
+        answer = narrate(question, title, values, language=language)
         check = verify_text(answer, values, allowed_inputs)
         if not check["ok"]:
-            answer = narrate(question, title, values, strict=True)
+            answer = narrate(question, title, values, strict=True, language=language)
             check = verify_text(answer, values, allowed_inputs)
     except Exception:  # noqa: BLE001 - computed results still have a safe no-LLM narration
         answer = templated_answer(title, values)
@@ -285,7 +289,7 @@ def _grounded_answer(
     return answer, check
 
 
-def tutor(question: str) -> dict[str, Any]:
+def tutor(question: str, language: str = "English") -> dict[str, Any]:
     if not _looks_like_math_question(question):
         return _graceful(
             question,
@@ -339,7 +343,7 @@ def tutor(question: str) -> dict[str, Any]:
     # 4 + 5) Narration (Gemini) and comparison (Wolfram) are independent.
     with ThreadPoolExecutor(max_workers=2) as pool:
         answer_future = pool.submit(
-            _grounded_answer, question, result["title"], values, allowed_inputs
+            _grounded_answer, question, result["title"], values, allowed_inputs, language
         )
         discrepancy_future = pool.submit(
             _build_discrepancy,

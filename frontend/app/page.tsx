@@ -58,6 +58,16 @@ function reportRequestOf(result: AskResponse | null, question: string) {
   };
 }
 
+const LANGUAGES: { label: string; value: string }[] = [
+  { label: "English", value: "English" },
+  { label: "हिन्दी", value: "Hindi" },
+  { label: "বাংলা", value: "Bengali" },
+  { label: "தமிழ்", value: "Tamil" },
+  { label: "తెలుగు", value: "Telugu" },
+  { label: "मराठी", value: "Marathi" },
+  { label: "Español", value: "Spanish" },
+];
+
 export default function Home() {
   const [result, setResult] = useState<AskResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,6 +77,7 @@ export default function Home() {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [reportData, setReportData] = useState<Report | null>(null);
   const [photoDraft, setPhotoDraft] = useState<string | null>(null);
+  const [language, setLanguage] = useState("English");
   const reportRequest = reportRequestOf(result, asked);
 
   useEffect(() => {
@@ -84,7 +95,7 @@ export default function Home() {
     setPhotoDraft(null);
     setResult(null);
     try {
-      const answer = await ask(question);
+      const answer = await ask(question, language);
       setResult(answer);
       saveTutorHistory(question, answer);
     } catch (e) {
@@ -187,6 +198,9 @@ export default function Home() {
           reporting={reporting}
           canReport={Boolean(reportRequest)}
           photoDraft={photoDraft}
+          language={language}
+          languages={LANGUAGES}
+          onLanguageChange={setLanguage}
           onClearPhotoDraft={() => setPhotoDraft(null)}
           onAsk={handleAsk}
           onPhoto={handlePhoto}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ArrowUp, Camera, FileText, Loader2, Sigma, X } from "lucide-react";
+import { ArrowUp, Camera, FileText, Languages, Loader2, Sigma, X } from "lucide-react";
 
 type Props = {
   subject: string;
@@ -11,6 +11,9 @@ type Props = {
   reporting?: boolean;
   canReport?: boolean;
   photoDraft?: string | null;
+  language?: string;
+  languages?: { label: string; value: string }[];
+  onLanguageChange?: (value: string) => void;
   onClearPhotoDraft: () => void;
   onAsk: (q: string) => void;
   onPhoto: (file: File) => Promise<void>;
@@ -25,6 +28,9 @@ export function AskConsole({
   reporting,
   canReport,
   photoDraft,
+  language = "English",
+  languages,
+  onLanguageChange,
   onClearPhotoDraft,
   onAsk,
   onPhoto,
@@ -74,6 +80,22 @@ export function AskConsole({
               event.currentTarget.value = "";
             }}
           />
+          {languages && onLanguageChange && (
+            <label className="console-action cursor-pointer gap-1.5" title="Language of the explanation (the math stays identical)">
+              <Languages size={14} className="text-[var(--color-verify)]" />
+              <select
+                value={language}
+                onChange={(event) => onLanguageChange(event.target.value)}
+                disabled={busy}
+                aria-label="Explanation language"
+                className="cursor-pointer bg-transparent text-xs font-bold text-text outline-none disabled:opacity-50"
+              >
+                {languages.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             onClick={onReport}

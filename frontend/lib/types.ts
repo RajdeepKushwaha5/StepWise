@@ -44,6 +44,12 @@ export type CheckResponse = {
   analysis: MistakeAnalysis;
 };
 
+export type SolutionStep = {
+  label: string;
+  result: string;
+  result_tex?: string;
+};
+
 export type MistakeAnalysis = {
   kind: string;
   title: string;

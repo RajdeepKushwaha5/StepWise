@@ -497,3 +497,80 @@ def run_tool(name: str, **params: Any) -> dict[str, Any]:
     if name not in TOOLS:
         raise KeyError(f"Unknown tool: {name}")
     return TOOLS[name]["fn"](**params)
+
+
+# --------------------------------------------------------------------------- #
+# on-demand, Wolfram-verified worked steps (isolated: failure -> [] , never
+# affects the primary answer)
+# --------------------------------------------------------------------------- #
+
+_DIFF_STEPS = """
+Module[{f = __EXPR__, var = __VAR__, steps},
+ steps = Which[
+   Head[f] === Plus,
+     Map[Function[t, <|
+        "label" -> "d/d" <> ToString[var] <> "[ " <> ToString[t, InputForm] <> " ]",
+        "result" -> ToString[D[t, var], InputForm],
+        "result_tex" -> ToString[TeXForm[D[t, var]]]|>], List @@ f],
+   Head[f] === Times && Length[List @@ f] == 2,
+     With[{u = (List @@ f)[[1]], v = (List @@ f)[[2]]}, {
+        <|"label" -> "Product rule with u = " <> ToString[u, InputForm] <> ", v = " <> ToString[v, InputForm],
+          "result" -> "(u v)' = u' v + u v'", "result_tex" -> "(u v)' = u' v + u v'"|>,
+        <|"label" -> "u' v", "result" -> ToString[D[u, var]*v, InputForm], "result_tex" -> ToString[TeXForm[D[u, var]*v]]|>,
+        <|"label" -> "u v'", "result" -> ToString[u*D[v, var], InputForm], "result_tex" -> ToString[TeXForm[u*D[v, var]]]|>}],
+   True,
+     {<|"label" -> "d/d" <> ToString[var] <> "[ " <> ToString[f, InputForm] <> " ]",
+        "result" -> ToString[D[f, var], InputForm],
+        "result_tex" -> ToString[TeXForm[D[f, var]]]|>}];
+ <|"values" -> <|
+     "steps" -> steps,
+     "final" -> ToString[D[f, var], InputForm],
+     "final_tex" -> ToString[TeXForm[D[f, var]]]|>,
+   "chart" -> Null|>]
+"""
+
+_INT_STEPS = """
+Module[{f = __EXPR__, var = __VAR__, a = __A__, b = __B__, cap, res},
+ cap = Integrate[f, var];
+ res = Integrate[f, {var, a, b}];
+ <|"values" -> <|
+     "steps" -> {
+        <|"label" -> "Find the antiderivative F(" <> ToString[var] <> ")",
+          "result" -> ToString[cap, InputForm], "result_tex" -> ToString[TeXForm[cap]]|>,
+        <|"label" -> "Evaluate F at the upper limit " <> ToString[b, InputForm],
+          "result" -> ToString[Simplify[cap /. var -> b], InputForm],
+          "result_tex" -> ToString[TeXForm[Simplify[cap /. var -> b]]]|>,
+        <|"label" -> "Evaluate F at the lower limit " <> ToString[a, InputForm],
+          "result" -> ToString[Simplify[cap /. var -> a], InputForm],
+          "result_tex" -> ToString[TeXForm[Simplify[cap /. var -> a]]]|>,
+        <|"label" -> "Subtract F(upper) - F(lower)",
+          "result" -> ToString[res, InputForm], "result_tex" -> ToString[TeXForm[res]]|>},
+     "final" -> ToString[res, InputForm], "final_tex" -> ToString[TeXForm[res]]|>,
+   "chart" -> Null|>]
+"""
+
+
+def solution_steps(tool: str, args: dict[str, Any]) -> list[dict[str, Any]]:
+    """Best-effort Wolfram-computed worked steps for a computed answer.
+
+    Isolated by design: any failure (bad input, cloud error, unsupported operation)
+    returns an empty list so the primary answer is never affected.
+    """
+    try:
+        if tool == "differentiate":
+            expr = _safe_expr(_strip_definition(str(args.get("expression", ""))))
+            var = _safe_var(str(args.get("variable", "x")))
+            code = _DIFF_STEPS.replace("__EXPR__", expr).replace("__VAR__", var)
+        elif tool == "integrate_expression" and str(args.get("lower", "")).strip() and str(args.get("upper", "")).strip():
+            expr = _safe_expr(_strip_definition(str(args.get("expression", ""))))
+            var = _safe_var(str(args.get("variable", "x")))
+            a = _safe_expr(str(args.get("lower")), label="lower bound")
+            b = _safe_expr(str(args.get("upper")), label="upper bound")
+            code = _INT_STEPS.replace("__EXPR__", expr).replace("__VAR__", var).replace("__A__", a).replace("__B__", b)
+        else:
+            return []
+        out = _run(code)
+        steps = out["values"].get("steps")
+        return list(steps) if isinstance(steps, (list, tuple)) else []
+    except Exception:  # noqa: BLE001 - steps are a bonus; never surface an error here
+        return []

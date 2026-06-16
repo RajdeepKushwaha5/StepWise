@@ -7,6 +7,7 @@ import { fmtByKey, prettyKey } from "@/lib/format";
 import { MathText } from "@/components/MathText";
 import { Tex } from "@/components/Tex";
 import { CheckAnswer } from "@/components/CheckAnswer";
+import { WorkedSteps } from "@/components/WorkedSteps";
 
 function answerTex(values: Record<string, VerifiedValue>): string | null {
   for (const [key, value] of Object.entries(values)) {
@@ -32,6 +33,9 @@ export function Verdict({ r }: { r: AskResponse }) {
   const tex = answerTex(r.values);
   const checkable = checkableAnswer(r.values);
   const variable = typeof r.tool_args?.variable === "string" ? r.tool_args.variable : "x";
+  const canStep =
+    r.tool === "differentiate" ||
+    (r.tool === "integrate_expression" && Boolean(r.tool_args?.lower) && Boolean(r.tool_args?.upper));
   const headline =
     discrepancy && !symbolic && discrepancy.verified != null
       ? fmtByKey(discrepancy.headline_key ?? "", discrepancy.verified as number)
@@ -161,6 +165,8 @@ export function Verdict({ r }: { r: AskResponse }) {
                 {tex && <div className="mt-2 overflow-x-auto"><Tex tex={tex} block className="text-xl text-text" /></div>}
               </div>
             )}
+
+            {canStep && r.tool && <WorkedSteps tool={r.tool} toolArgs={r.tool_args ?? {}} />}
 
             <div className="mt-4 grid gap-3">
               {r.chart_png_base64 && <ChartDetails image={r.chart_png_base64} />}

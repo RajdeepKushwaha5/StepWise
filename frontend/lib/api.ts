@@ -7,6 +7,7 @@ import type {
   PracticeProblem,
   PracticeRevealResponse,
   Report,
+  SolutionStep,
 } from "./types";
 import { prepareImageForUpload } from "./image";
 
@@ -21,7 +22,11 @@ export type BackendHealth = {
 
 export async function warmBackend(): Promise<BackendHealth> {
   try {
-    const res = await fetch(`${API}/api/health`, { cache: "no-store" });
+    // Fail fast so the retry loop stays responsive while a free-tier host cold-starts.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(`${API}/api/health`, { cache: "no-store", signal: controller.signal });
+    clearTimeout(timeout);
     // A degraded backend answers 503 with a JSON body describing the failure.
     const body = (await res.json().catch(() => ({}))) as Partial<BackendHealth>;
     return {
@@ -46,11 +51,11 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   return `${fallback} (${res.status})`;
 }
 
-export async function ask(question: string): Promise<AskResponse> {
+export async function ask(question: string, language = "English"): Promise<AskResponse> {
   const res = await fetch(`${API}/api/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, language }),
   });
   if (!res.ok) throw new Error(await errorMessage(res, "Request failed"));
   return res.json();
@@ -169,4 +174,22 @@ export async function studyReportPdf(title: string, items: HistoryItem[]): Promi
   });
   if (!res.ok) throw new Error(await errorMessage(res, "Study report failed"));
   return res.blob();
+}
+
+export async function fetchSteps(
+  tool: string,
+  toolArgs: Record<string, unknown>,
+): Promise<SolutionStep[]> {
+  try {
+    const res = await fetch(`${API}/api/steps`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tool, tool_args: toolArgs }),
+    });
+    if (!res.ok) return [];
+    return (await res.json()).steps ?? [];
+  } catch {
+    // Worked steps are a bonus — never surface an error to the learner.
+    return [];
+  }
 }

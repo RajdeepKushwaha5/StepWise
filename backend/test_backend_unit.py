@@ -116,6 +116,25 @@ class SafetyTests(unittest.TestCase):
                 tools.differentiate("Export[\"x\", 1]", "x")
             evaluate.assert_not_called()
 
+    def test_solution_steps_are_isolated_and_safe(self) -> None:
+        # a cloud failure yields [] rather than raising (never breaks the answer)
+        with patch("app.wolfram.tools.session.evaluate", side_effect=RuntimeError("down")):
+            self.assertEqual(tools.solution_steps("differentiate", {"expression": "x^2", "variable": "x"}), [])
+        # an injection attempt never reaches the kernel
+        with patch("app.wolfram.tools.session.evaluate") as evaluate:
+            self.assertEqual(tools.solution_steps("differentiate", {"expression": 'Export["x",1]', "variable": "x"}), [])
+            evaluate.assert_not_called()
+        # unsupported operations return [] (no steps offered)
+        self.assertEqual(tools.solution_steps("matrix_analysis", {"matrix": "{{1,2},{3,4}}"}), [])
+        # a well-formed kernel response is parsed into a step list
+        with patch(
+            "app.wolfram.tools.session.evaluate",
+            return_value={"values": {"steps": [{"label": "u' v", "result": "2 x Sin[x]", "result_tex": "2 x"}]}, "chart": None},
+        ):
+            steps = tools.solution_steps("differentiate", {"expression": "x^2 Sin[x]", "variable": "x"})
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0]["label"], "u' v")
+
     def test_strip_definition_reduces_function_definitions(self) -> None:
         self.assertEqual(tools._strip_definition("f(x) = 6x^3 - 9x + 4"), "6x^3 - 9x + 4")
         self.assertEqual(tools._strip_definition("y = x^2 + 1"), "x^2 + 1")
@@ -162,6 +181,23 @@ class PlannerFallbackTests(unittest.TestCase):
 
     def test_rough_expression_converts_word_functions(self) -> None:
         self.assertEqual(_rough_expression("derivative of sin(x)"), "Sin[x]")
+
+    def test_language_flows_to_narrator_without_touching_math(self) -> None:
+        from app.llm import narrator
+
+        with patch("app.llm.narrator.get_client") as get_client:
+            client = get_client.return_value
+            client.generate_text.return_value = "explanation"
+            narrator.narrate("q", "Derivative", {"derivative": "2 x"}, language="Hindi")
+            system = client.generate_text.call_args.kwargs["system"]
+        self.assertIn("in Hindi", system)
+        self.assertIn("do not translate", system)  # digits/expressions stay standard
+        # English produces no extra language instruction
+        with patch("app.llm.narrator.get_client") as get_client:
+            get_client.return_value.generate_text.return_value = "x"
+            narrator.narrate("q", "t", {"derivative": "2 x"}, language="English")
+            english_system = get_client.return_value.generate_text.call_args.kwargs["system"]
+        self.assertNotIn("Write your entire explanation", english_system)
 
     def test_conversational_filler_is_stripped(self) -> None:
         from app.pipeline import _fallback_is_computable

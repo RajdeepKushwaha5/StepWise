@@ -32,14 +32,37 @@ def _facts(values: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def narrate(question: str, title: str, values: dict[str, Any], strict: bool = False) -> str:
+def _language_instruction(language: str) -> str:
+    """Explain in the student's language while keeping the math itself untouched.
+
+    Numbers, variables, and expressions must stay in standard notation so the
+    number-guard (which reads Latin numerals) still traces every claim.
+    """
+    lang = (language or "English").strip()
+    if lang.lower() in ("", "english", "en"):
+        return ""
+    return (
+        f"\n\nWrite your entire explanation in {lang}. Keep all numbers, variable names, and "
+        "mathematical expressions exactly as given, in standard notation — do not translate, "
+        "transliterate, or convert the math or the digits."
+    )
+
+
+def narrate(
+    question: str,
+    title: str,
+    values: dict[str, Any],
+    strict: bool = False,
+    language: str = "English",
+) -> str:
     extra = "\nIMPORTANT: copy every number and symbol EXACTLY as given; change nothing." if strict else ""
+    system = NARRATOR_SYSTEM + _language_instruction(language)
     prompt = (
         f"Student question: {question}\n\n"
         f"Wolfram-computed result ({title}):\n{_facts(values)}\n{extra}\n\n"
         "Explain it to the student now."
     )
-    return get_client().generate_text(prompt, system=NARRATOR_SYSTEM, temperature=0.25)
+    return get_client().generate_text(prompt, system=system, temperature=0.25)
 
 
 def templated_answer(title: str, values: dict[str, Any]) -> str:
