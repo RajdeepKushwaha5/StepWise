@@ -3,7 +3,7 @@ import { BackendWarmup } from "@/components/BackendWarmup";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "StepWise — inspect the computation",
+  title: "StepWise: inspect the computation",
   description:
     "StepWise computes STEM results with Wolfram Language, checks numeric claims, and shows the provenance beside the explanation.",
 };
