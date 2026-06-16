@@ -11,26 +11,6 @@ Built for **OSC AI Build 1.0** · Theme: AI for Social Impact (education) · Fut
 
 ---
 
-## Project status
-
-The product is deployed and has been verified end to end against the live frontend and backend.
-
-Verified on June 15, 2026:
-- Frontend serves successfully at `http://localhost:3000`.
-- Deployed frontend routes serve successfully at `https://step-wise-taupe.vercel.app/`.
-- Backend health is `ok` at `http://localhost:8000/api/health`.
-- Deployed backend health is `ok` at `https://stepwise-api-cba3.onrender.com/api/health`.
-- All 47 backend unit tests pass.
-- The live Wolfram tool suite and full Gemini → Wolfram tutoring pipeline pass.
-- All 12 practice topic/difficulty combinations generate successfully.
-- Guided hints, wrong/correct answer checks, mistake analysis, history export, and study-report PDF
-  generation pass through the live API.
-- Learning Insights tracks submitted attempts and derives misconception, mastery, hint-dependency,
-  difficulty, and next-topic signals locally.
-- Frontend lint, formatting tests, TypeScript checks, and production build pass.
-
----
-
 ## The problem
 Normal AI tutors sound confident while getting math subtly wrong — a dropped term, a flipped sign,
 a skipped rule. For a student who is *learning*, a confidently wrong explanation is worse than no
@@ -43,8 +23,13 @@ StepWise separates **teaching** from **math**:
 - **Gemini** explains the returned computation like a patient tutor.
 - **Wolfram Language** computes every displayed result and graph — the source of the answer.
 - A **number-guard** rejects any number in the explanation that didn't come from Wolfram.
-- The UI shows **AI alone vs StepWise** side by side, marking a discrepancy when one exists and
-  showing an independent confirmation when both answers agree.
+- The UI shows **AI alone vs StepWise** side by side, and when they differ it renders a **step-diff**:
+  the AI's answer, the Wolfram answer, and the exact symbolic term that's off — all typeset.
+- **Worked steps** (on demand): Wolfram computes the intermediate steps — the product rule term by
+  term, or a definite integral as antiderivative → evaluate bounds → subtract — each line verified.
+- **Multilingual**: the same Wolfram-verified answer can be explained in the student's language
+  (English, Hindi, Bengali, Tamil, Telugu, Marathi, Spanish); the math, graph, and provenance stay
+  identical — only the explanation changes.
 - Practice Mode adds a repeatable learning loop with progressive hints, Wolfram-verified answers,
   targeted mistake analysis, and local progress tracking.
 - Learning Insights turns those attempts into a mastery map, recurring-misconception analysis,
@@ -53,13 +38,15 @@ StepWise separates **teaching** from **math**:
 
 > Every other AI tutor asks you to trust it. StepWise shows the computation — and teaches you why.
 
-## How AI is integrated (judging note)
+## How AI is integrated
 AI is the core of the product, not a bolt-on:
 - A deterministic router maps common questions to Wolfram tools without an LLM. **Gemini (free
   tier only)** uses function-calling to translate unfamiliar supported questions into approved
   Wolfram operations, then narrates the result pedagogically.
 - A second **"AI alone"** Gemini pass answers with no tools, and StepWise **symbolically compares** it to
   the Wolfram-computed answer (`FullSimplify[a - b == 0]`) to surface mistakes live.
+- Gemini also **reads photographed problems** (multimodal) into an editable transcription, and
+  **narrates in the student's chosen language** while keeping every number and expression untouched.
 - Multi-key rotation + model fallback keep it reliable on the free tier.
 
 ## How Wolfram Language is used (judging note)
@@ -67,8 +54,9 @@ Wolfram is load-bearing — the verified result does not come from the LLM. Eigh
 Wolfram tools run in **Wolfram Cloud**: `solve_equation`, `evaluate_expression`,
 `simplify_expression`, `differentiate`, `integrate_expression`, `plot_function`, `verify_answer`
 (symbolic equivalence), and `matrix_analysis`. Every computed answer ships with the exact Wolfram
-code that produced it (provenance), graphs are rendered by Wolfram, and worked-solution PDFs are
-built from Wolfram computations only.
+code that produced it (provenance), graphs are rendered by Wolfram, the on-demand **worked steps**
+and the **step-diff** are Wolfram-computed, and worked-solution PDFs are built from Wolfram
+computations only.
 
 ## Try it
 - Open **Practice** to choose a topic and difficulty, request hints, and submit an answer.
@@ -78,6 +66,9 @@ built from Wolfram computations only.
 - Open **Tool lab** to inspect all eight supported operations and launch an example directly into
   the live tutor.
 - "What is the derivative of x² sin(x)?" — compare the AI-alone answer with an independent Wolfram result.
+- Click **Show the worked steps** on a derivative or definite integral to see each Wolfram-computed step.
+- Switch the **language selector** to हिन्दी (or another language) and ask again — the explanation
+  changes language while the Wolfram math stays identical.
 - Upload a photo — review and correct the transcription before StepWise solves it.
 - "Check my answer" — type your working; Wolfram verifies it symbolically.
 - "Worked solution" → **Download PDF** — a provenance-backed study sheet in one click.
@@ -89,16 +80,20 @@ built from Wolfram computations only.
 ```
 ┌─────────────┐   POST /api/ask      ┌───────────────────────────────────────────┐
 │  Next.js    │ ───────────────────► │              FastAPI backend              │
-│ 2-col tutor │ {question}           │  1. Gemini RAW pass   (no tools → may err)│
+│ 2-col tutor │ {question, language} │  1. Gemini RAW pass   (no tools → may err)│
 │  + KaTeX    │ ◄─────────────────── │  2. INTENT ROUTER     (deterministic first)│
 └─────────────┘  {raw_answer,        │     → Gemini fallback for unfamiliar NL   │
                   verified_answer,   │  3. Wolfram executor  (wolframclient)     │
-                  chart, wl_code,    │  4. Gemini NARRATOR   (grounded in #3)    │
-                  discrepancy}       │  5. Number-guard: trace numeric claims    │
+                  chart, wl_code,    │  4. Gemini NARRATOR   (grounded in #3,    │
+                  discrepancy}       │     in the chosen language)               │
+                                     │  5. Number-guard: trace numeric claims    │
                                      │  6. Diff AI-alone vs computed (symbolic)  │
                                      └───────────────────────────────────────────┘
                                           │ LLM: Gemini (free)      │ Compute: Wolfram Cloud
 ```
+
+Worked steps (`POST /api/steps`) and photo transcription (`POST /api/ask/photo`) are separate,
+isolated calls: worked steps are computed on demand and never affect the primary answer.
 
 ## Project layout
 ```
@@ -107,16 +102,17 @@ backend/                FastAPI service (Python)
     main.py             routes
     config.py           env / secrets (.env)
     learning.py         practice bank, progressive hints, and mistake analysis
-    pipeline.py         tutoring loop (raw → route → compute → narrate → guard → diff) + check_answer
+    pipeline.py         tutoring loop (raw → route → compute → narrate[language] → guard → diff) + check_answer
     report.py           worked-solution builder (Wolfram tools, no LLM)
     pdf.py              ReportLab PDF of a worked solution
-    llm/                gemini client, planner, raw pass, narrator
+    llm/                gemini client, planner, raw pass, narrator (multilingual), vision (photo OCR)
     verify/guard.py     number-guard + AI-alone-vs-computed discrepancy
-    wolfram/            cloud session + the 8 math-tool templates
+    wolfram/            cloud session + the 8 math-tool templates + isolated worked-steps templates
   Dockerfile            container for Render/Railway/Fly
 frontend/               Next.js 16 app
   app/                  pages (/, /practice, /insights, /history, /capabilities, /architecture) + globals.css
-  components/           shared navigation, AskConsole, Verdict, CheckAnswer, Tex, ReportView…
+  components/           navigation, AskConsole (photo + language), Verdict (step-diff), WorkedSteps,
+                        CheckAnswer, Tex (KaTeX), ReportView, BackendWarmup (auto-retry cold start)…
   lib/                  API client, local history/progress/insight analytics, types, formatting
 ```
 
@@ -178,7 +174,8 @@ The frontend calls `http://localhost:8000` by default; override with `NEXT_PUBLI
 deployed backend.
 
 ### Frontend pages
-- `/` — live tutor, AI-alone comparison, computed evidence, answer checking, and reports
+- `/` — live tutor: AI-alone vs Wolfram comparison + step-diff, on-demand worked steps, multilingual
+  explanations, photo input, answer checking, and reports
 - `/practice` — topic/difficulty practice, progressive hints, mistake analysis, and progress metrics
 - `/insights` — browser-local misconception trends, accuracy breakdowns, mastery map, and adaptive
   next-topic recommendation
@@ -197,8 +194,9 @@ deployed backend.
 - `POST /api/practice/hint` — reveal one progressive hint level
 - `POST /api/practice/check` — Wolfram-verify an answer and return mistake analysis
 - `POST /api/practice/reveal` — reveal the Wolfram-computed answer
-- `POST /api/ask` — `{question}` → AI-alone vs Wolfram-computed answer + discrepancy + graph + code
+- `POST /api/ask` — `{question, language}` → AI-alone vs Wolfram-computed answer + discrepancy + graph + code (explanation in the chosen language)
 - `POST /api/ask/photo` — `{image_base64, mime_type}` → editable transcription; never auto-solves
+- `POST /api/steps` — `{tool, tool_args}` → on-demand Wolfram-computed worked steps (isolated; returns `[]` rather than erroring)
 - `POST /api/check` — `{student, correct, variable}` → symbolic equivalence verdict
 - `POST /api/report` — expression plus originating tool context → operation-specific solution record
 - `POST /api/report/pdf` — same, returns a downloadable PDF
