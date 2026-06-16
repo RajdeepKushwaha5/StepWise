@@ -42,9 +42,9 @@ def _language_instruction(language: str) -> str:
     if lang.lower() in ("", "english", "en"):
         return ""
     return (
-        f"\n\nWrite your entire explanation in {lang}. Keep all numbers, variable names, and "
-        "mathematical expressions exactly as given, in standard notation — do not translate, "
-        "transliterate, or convert the math or the digits."
+        f"\n\nCRITICAL: Respond ONLY in {lang}. Every word of your explanation must be written in "
+        f"{lang}, not English. Keep all numbers, variable names, and mathematical expressions exactly "
+        "as given, in standard notation — do not translate, transliterate, or convert the math or the digits."
     )
 
 

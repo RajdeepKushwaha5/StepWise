@@ -30,10 +30,20 @@ answer is not a single expression (or you can't express it), write FINAL_WL: NON
 _FINAL_RE = re.compile(r"FINAL_WL:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
 
 
-def raw_answer(question: str) -> dict[str, str]:
+def _language_clause(language: str) -> str:
+    lang = (language or "English").strip()
+    if lang.lower() in ("", "english", "en"):
+        return ""
+    return (
+        f"\n\nWrite your spoken answer entirely in {lang}. Keep numbers and math expressions in "
+        f"standard notation, and keep the FINAL_WL line in plain Wolfram syntax (not {lang})."
+    )
+
+
+def raw_answer(question: str, language: str = "English") -> dict[str, str]:
     """Return {'prose': shown-to-student answer, 'expr': best-effort Wolfram expression}."""
     prompt = f"Question: {question}\n\nAnswer, then give the FINAL_WL line."
-    text = get_client().generate_text(prompt, system=RAW_SYSTEM, temperature=0.3)
+    text = get_client().generate_text(prompt, system=RAW_SYSTEM + _language_clause(language), temperature=0.3)
     expr = ""
     match = _FINAL_RE.search(text or "")
     if match:

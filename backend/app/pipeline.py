@@ -301,7 +301,7 @@ def tutor(question: str, language: str = "English") -> dict[str, Any]:
     # 1 + 2) Start the AI-alone comparison while routing the computation.
     # Common intents route deterministically; Gemini planning handles unfamiliar phrasing.
     with ThreadPoolExecutor(max_workers=2) as pool:
-        raw_future = pool.submit(raw_answer, question)
+        raw_future = pool.submit(raw_answer, question, language)
         sel = _fallback_plan(question)
         if sel and not _fallback_is_computable(sel):
             sel = None  # deterministic match left conversational junk — let Gemini translate

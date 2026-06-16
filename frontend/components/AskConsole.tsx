@@ -81,7 +81,7 @@ export function AskConsole({
             }}
           />
           {languages && onLanguageChange && (
-            <label className="console-action cursor-pointer gap-1.5" title="Language of the explanation (the math stays identical)">
+            <span className="console-action gap-1.5" title="Language of the explanation (the math stays identical)">
               <Languages size={14} className="text-[var(--color-verify)]" />
               <select
                 value={language}
@@ -94,7 +94,7 @@ export function AskConsole({
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
-            </label>
+            </span>
           )}
           <button
             type="button"
